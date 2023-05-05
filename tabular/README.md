@@ -1,4 +1,4 @@
-# Tabular Approach
+# Tabular approach
 
 ## Setup
 ```bash
