@@ -2,3 +2,4 @@ torch
 pandas==2.0.1
 pytorch-lightning==2.0.2
 pip==23.1.2
+scikit-learn
