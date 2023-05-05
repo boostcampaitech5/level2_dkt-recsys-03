@@ -5,7 +5,7 @@ import torch
 
 
 def set_seeds(seed: int = 42):
-    # 랜덤 시드를 설정하여 매 코드를 실행할 때마다 동일한 결과를 얻게 합니다.
+    # set random seed
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
     np.random.seed(seed)
