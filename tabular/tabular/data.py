@@ -13,12 +13,13 @@ class TabularDataModule:
         self.test_data_path: str = config.test_data_path
         self.cv_strategy: str = config.cv_strategy
 
-        self.train_data: Optional[pd.DataFrame] = None
+        self.train_data: Union[pd.DataFrame, List[pd.DataFrame], None] = None
+        self.valid_data: Union[pd.DataFrame, List[pd.DataFrame], None] = None
         self.test_data: Optional[pd.DataFrame] = None
         
-        self.train_dataset: Union[pd.DataFrame, List[pd.DataFrame], None] = None
-        self.valid_dataset: Union[pd.DataFrame, List[pd.DataFrame], None] = None
-        self.test_dataset: Optional[pd.DataFrame] = None
+        self.train_dataset: Optional[TabularDataset] = None
+        self.valid_dataset: Optional[TabularDataset] = None
+        self.test_dataset: Optional[TabularDataset] = None
 
     def prepare_data(self):
         # load csv file
@@ -32,18 +33,27 @@ class TabularDataModule:
     def setup(self):
         # split data based on validation startegy
         splitter = TabularDataSplitter(self.config)
-        train_dataset, valid_dataset = splitter.split_data(self.train_data)
+        train_data, valid_data = splitter.split_data(self.train_data)
         # feature engineering
         if self.cv_strategy == 'holdout':
-            self.train_dataset = self.processor.feature_engineering(train_dataset)
-            self.valid_dataset = self.processor.feature_engineering(valid_dataset)
+            train_data = self.processor.feature_engineering(self.train_data)
+            valid_data = self.processor.feature_engineering(valid_data)
+
+            self.train_dataset = TabularDataset(self.train_data)
+            self.valid_dataset = TabularDataset(valid_data, is_train=False)
+
         elif self.cv_strategy == 'kfold':
-            self.train_dataset = [self.processor.feature_engineering(df) for df in train_dataset]
-            self.valid_dataset = [self.processor.feature_engineering(df) for df in valid_dataset]
+            train_data = [self.processor.feature_engineering(df) for df in train_data]
+            valid_data = [self.processor.feature_engineering(df) for df in valid_data]
+
+            self.train_dataset = [TabularDataset(df) for df in train_data]
+            self.valid_dataset = [TabularDataset(df) for df in valid_data]
+
         else:
             raise NotImplementedError
 
-        self.test_dataset = self.processor.feature_engineering(self.test_data)
+        test_data = self.processor.feature_engineering(self.test_data)
+        self.test_dataset = TabularDataset(test_data)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
@@ -58,13 +68,13 @@ class TabularDataProcessor:
     def __init__(self, config: DictConfig):
         self.config = config
         
-    def preprocessing(self, df: pd.DataFrame):
+    def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         TODO
         """
         return df
     
-    def feature_engineering(self, df: pd.DataFrame):
+    def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         TODO
         """ 
@@ -90,3 +100,11 @@ class TabularDataSplitter:
 
         else:
             raise NotImplementedError
+
+class TabularDataset:
+    def __init__(self, df: pd.DataFrame, is_train=True):
+        if is_train == False:
+            df = df[df['userID'] != df['userID'].shift(-1)]
+
+        self.X = df.drop(['answerCode'], axis=1)
+        self.y = df['answerCode']
