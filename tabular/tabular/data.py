@@ -22,18 +22,29 @@ class TabularDataModule:
 
     def prepare_data(self):
         # load csv file
-        self.train_data: pd.DataFrame = self.load_csv_file(self.train_data_path)
-        self.test_data: pd.DataFrame = self.load_csv_file(self.test_data_path)
+        train_data: pd.DataFrame = self.load_csv_file(self.train_data_path)
+        test_data: pd.DataFrame = self.load_csv_file(self.test_data_path)
         # data preprocessing
-        '''
-        TODO TabularDataProcessor
-        '''
+        self.processor = TabularDataProcessor(self.config)
+        self.train_data = self.processor.preprocessing(train_data)
+        self.test_data = self.processor.preprocessing(test_data)
 
     def setup(self):
         # split data based on validation startegy
         splitter = TabularDataSplitter(self.config)
-        self.train_dataset, self.valid_dataset = splitter.split_data(self.train_data)
-    
+        train_dataset, valid_dataset = splitter.split_data(self.train_data)
+        # feature engineering
+        if self.cv_strategy == 'holdout':
+            self.train_dataset = self.processor.feature_engineering(train_dataset)
+            self.valid_dataset = self.processor.feature_engineering(valid_dataset)
+        elif self.cv_strategy == 'kfold':
+            self.train_dataset = [self.processor.feature_engineering(df) for df in train_dataset]
+            self.valid_dataset = [self.processor.feature_engineering(df) for df in valid_dataset]
+        else:
+            raise NotImplementedError
+
+        self.test_dataset = self.processor.feature_engineering(self.test_data)
+
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
             'userID': 'int16',
@@ -41,6 +52,23 @@ class TabularDataModule:
             'KnowledgeTag': 'int16'
             } 
         return pd.read_csv(path, dtype=dtype, parse_dates=['Timestamp'])
+
+
+class TabularDataProcessor:
+    def __init__(self, config: DictConfig):
+        self.config = config
+        
+    def preprocessing(self, df: pd.DataFrame):
+        """
+        TODO
+        """
+        return df
+    
+    def feature_engineering(self, df: pd.DataFrame):
+        """
+        TODO
+        """ 
+        return df
 
 
 class TabularDataSplitter:
