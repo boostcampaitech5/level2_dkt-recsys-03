@@ -1,4 +1,6 @@
 import os
+import time
+from datetime import datetime
 import random
 import numpy as np
 import pandas as pd
@@ -44,11 +46,23 @@ class DKTDataModule(pl.LightningDataModule):
             test = le.transform(self.df[col])
             self.df[col] = test
 
+        def convert_time(s: str):
+            timestamp = time.mktime(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple())
+            return int(timestamp)
+
+        def convert_time(s: str):
+            timestamp = time.mktime(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple())
+            return int(timestamp)
+
+        self.df["Timestamp"] = self.df["Timestamp"].apply(convert_time)
+
     # split train data to train & valid : this part will be excahnged
-    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = self.args.seed)
+    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
+
+        seed = self.args.seed
         if shuffle:
             random.seed(seed)
-            random.shuffle(seed)
+            random.shuffle(data)
         
         size = int(len(data) * ratio)
         self.train_data = data[:size]
@@ -64,8 +78,8 @@ class DKTDataModule(pl.LightningDataModule):
     def setup(self, stage = None):
         if stage == "fit" or stage is None:
             self.__preprocessing()
-        if stage == "test" or stage is None:
-            self.__preprocessing(is_train=False)
+        # if stage == "test" or stage is None:
+        #     self.__preprocessing(is_train=False)
         
         self.args.n_questions = len(np.load(os.path.join(self.args.asset_path, "assessmentItemID_classes.npy")))
         self.args.n_tests = len(np.load(os.path.join(self.args.asset_path, "testId_classes.npy")))
@@ -83,9 +97,9 @@ class DKTDataModule(pl.LightningDataModule):
         )
 
         if stage == "fit" or stage is None:
-            split_data(group.values)
-        if stage == "test" or stage is None:
-            self.test_data = group.values
+            self.split_data(group.values)
+        # if stage == "test" or stage is None:
+        #     self.test_data = group.values
 
     def train_dataloader():
         # return DataLoder()
