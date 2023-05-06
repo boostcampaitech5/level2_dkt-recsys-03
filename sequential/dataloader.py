@@ -13,6 +13,7 @@ class DKTDataModule(pl.LightningDataModule):
         self.args = args
         self.df = pd.DataFrame()
         self.train_data = None
+        self.valid_data = None
         self.test_data = None
     
     # Fill feature engineering func if needed using self.df
@@ -43,6 +44,16 @@ class DKTDataModule(pl.LightningDataModule):
             test = le.transform(self.df[col])
             self.df[col] = test
 
+    # split train data to train & valid : this part will be excahnged
+    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = self.args.seed)
+        if shuffle:
+            random.seed(seed)
+            random.shuffle(seed)
+        
+        size = int(len(data) * ratio)
+        self.train_data = data[:size]
+        self.valid_data = data[size:]
+
     # load and feature_engineering dataset
     def prepare_data(self):
         train_file_path = os.path.join(self.args.data_path, self.args.train_file)
@@ -53,8 +64,8 @@ class DKTDataModule(pl.LightningDataModule):
     def setup(self, stage = None):
         if stage == "fit" or stage is None:
             self.__preprocessing()
-        # if stage == "test" or stage is None:
-        #     self.__preprocessing(is_train=False)
+        if stage == "test" or stage is None:
+            self.__preprocessing(is_train=False)
         
         self.args.n_questions = len(np.load(os.path.join(self.args.asset_path, "assessmentItemID_classes.npy")))
         self.args.n_tests = len(np.load(os.path.join(self.args.asset_path, "testId_classes.npy")))
@@ -72,10 +83,9 @@ class DKTDataModule(pl.LightningDataModule):
         )
 
         if stage == "fit" or stage is None:
-            self.train_data = group.values
-            print(self.train_data)
-        # if stage == "test" or stage is None:
-            # self.test_data = group.values
+            split_data(group.values)
+        if stage == "test" or stage is None:
+            self.test_data = group.values
 
     def train_dataloader():
         # return DataLoder()
