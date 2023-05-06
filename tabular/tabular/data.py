@@ -42,7 +42,12 @@ class TabularDataModule:
             NotImplementedError
     
     def load_csv_file(self, path: str) -> pd.DataFrame:
-        return pd.read_csv(path)
+        dtype = {
+            'userID': 'int16',
+            'answerCode': 'int8',
+            'KnowledgeTag': 'int16'
+            } 
+        return pd.read_csv(path, dtype=dtype, parse_dates=['Timestamp'])
 
 
 class TabularDataSplitter:
