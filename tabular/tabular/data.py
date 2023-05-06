@@ -36,24 +36,24 @@ class TabularDataModule:
         train_data, valid_data = splitter.split_data(self.train_data)
         # feature engineering
         if self.cv_strategy == 'holdout':
-            train_data = self.processor.feature_engineering(self.train_data)
-            valid_data = self.processor.feature_engineering(valid_data)
+            self.train_data = self.processor.feature_engineering(train_data)
+            self.valid_data = self.processor.feature_engineering(valid_data)
 
             self.train_dataset = TabularDataset(self.train_data)
-            self.valid_dataset = TabularDataset(valid_data, is_train=False)
+            self.valid_dataset = TabularDataset(self.valid_data, is_train=False)
 
         elif self.cv_strategy == 'kfold':
-            train_data = [self.processor.feature_engineering(df) for df in train_data]
-            valid_data = [self.processor.feature_engineering(df) for df in valid_data]
+            self.train_data = [self.processor.feature_engineering(df) for df in train_data]
+            self.valid_data = [self.processor.feature_engineering(df) for df in valid_data]
 
-            self.train_dataset = [TabularDataset(df) for df in train_data]
-            self.valid_dataset = [TabularDataset(df) for df in valid_data]
+            self.train_dataset = [TabularDataset(df) for df in self.train_data]
+            self.valid_dataset = [TabularDataset(df, is_train=False) for df in self.valid_data]
 
         else:
             raise NotImplementedError
 
-        test_data = self.processor.feature_engineering(self.test_data)
-        self.test_dataset = TabularDataset(test_data)
+        self.test_data = self.processor.feature_engineering(self.test_data)
+        self.test_dataset = TabularDataset(self.test_data, is_train=False)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
@@ -100,6 +100,7 @@ class TabularDataSplitter:
 
         else:
             raise NotImplementedError
+
 
 class TabularDataset:
     def __init__(self, df: pd.DataFrame, is_train=True):
