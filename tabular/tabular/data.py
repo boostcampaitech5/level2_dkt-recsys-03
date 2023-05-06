@@ -1,7 +1,8 @@
 import random
 import pandas as pd
-from typing import Dict, Optional, List
+from typing import Dict, List, Union, Optional
 from omegaconf import DictConfig
+from sklearn.model_selection import GroupKFold
 
 
 class TabularDataModule:
@@ -15,12 +16,9 @@ class TabularDataModule:
         self.train_data: Optional[pd.DataFrame] = None
         self.test_data: Optional[pd.DataFrame] = None
         
-        self.train_dataset: Optional[pd.DataFrame] = None
-        self.valid_dataset: Optional[pd.DataFrame] = None
+        self.train_dataset: Union[pd.DataFrame, List[pd.DataFrame], None] = None
+        self.valid_dataset: Union[pd.DataFrame, List[pd.DataFrame], None] = None
         self.test_dataset: Optional[pd.DataFrame] = None
-
-        self.train_datasets: Optional[List[pd.DataFrame]] = None
-        self.valid_datasets: Optional[List[pd.DataFrame]] = None
 
     def prepare_data(self):
         # load csv file
@@ -34,12 +32,7 @@ class TabularDataModule:
     def setup(self):
         # split data based on validation startegy
         splitter = TabularDataSplitter(self.config)
-        if self.cv_strategy == 'holdout':
-            self.train_dataset, self.valid_dataset = splitter.split_data(self.train_data)
-        elif self.cv_strategy == 'kfold':
-            self.train_datasets, self.valid_datasets = splitter.split_data(self.train_data)
-        else:
-            NotImplementedError
+        self.train_dataset, self.valid_dataset = splitter.split_data(self.train_data)
     
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
@@ -53,26 +46,19 @@ class TabularDataModule:
 class TabularDataSplitter:
     def __init__(self, config: DictConfig):
         self.cv_strategy: str = config.cv_strategy
-    
-    def split_data(self, df: pd.DataFrame, train_size=0.8, shuffle=True):
+        
+    def split_data(self, df: pd.DataFrame, k=5):
+        splitter = GroupKFold(n_splits=k)
+        train_dataset, valid_dataset = [], []
+        for train_index, valid_index in splitter.split(df, groups=df['userID']):
+            train_dataset.append(df.loc[train_index])
+            valid_dataset.append(df.loc[valid_index])
+
         if self.cv_strategy == 'holdout':
-            users = list(zip(df['userID'].value_counts().index, df['userID'].value_counts()))
-            
-            if shuffle == True:
-                random.shuffle(users)
+            return train_dataset[0], valid_dataset[0]
 
-            max_cnt = train_size*len(df)
-            total_cnt = 0
-            user_ids = []
-            for user_id, cnt in users:
-                total_cnt += cnt
-                if max_cnt < total_cnt:
-                    break
-                user_ids.append(user_id)
+        elif self.cv_strategy == 'kfold':
+            return train_dataset, valid_dataset
 
-            train_data = df[df['userID'].isin(user_ids)]
-            test_data = df[df['userID'].isin(user_ids) == False]
-            return train_data, test_data
-    
         else:
             raise NotImplementedError
