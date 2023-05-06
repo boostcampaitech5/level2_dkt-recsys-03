@@ -12,6 +12,8 @@ class DKTDataModule(pl.LightningDataModule):
         super().__init__()
         self.args = args
         self.df = pd.DataFrame()
+        self.train_data = None
+        self.test_data = None
     
     # Fill feature engineering func if needed using self.df
     def __feature_engineering(self):
@@ -50,12 +52,31 @@ class DKTDataModule(pl.LightningDataModule):
     # preprocess and set dataset on train/test case
     def setup(self, stage = None):
         if stage == "fit" or stage is None:
-            self.df = self.__preprocessing(is_train=True)
-        if stage == "test" or stage is None:
-            self.df = self.__preprocessing(is_train=False)
+            self.__preprocessing()
+        # if stage == "test" or stage is None:
+        #     self.__preprocessing(is_train=False)
         
-        # self.args_nqueionts
-            
+        self.args.n_questions = len(np.load(os.path.join(self.args.asset_path, "assessmentItemID_classes.npy")))
+        self.args.n_tests = len(np.load(os.path.join(self.args.asset_path, "testId_classes.npy")))
+        self.args.n_tags = len(np.load(os.path.join(self.args.asset_path, "KnowledgeTag_classes.npy")))
+
+        self.df = self.df.sort_values(by=["userID","Timestamp"], axis=0)
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        group = self.df[columns].groupby("userID").apply(
+            lambda r: (
+                r["testId"].values,
+                r["assessmentItemID"].values,
+                r["KnowledgeTag"].values,
+                r["answerCode"].values,
+            )
+        )
+
+        if stage == "fit" or stage is None:
+            self.train_data = group.values
+            print(self.train_data)
+        # if stage == "test" or stage is None:
+            # self.test_data = group.values
+
     def train_dataloader():
         # return DataLoder()
         pass
