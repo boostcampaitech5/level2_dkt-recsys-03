@@ -5,18 +5,66 @@ import random
 import numpy as np
 import pandas as pd
 import torch
+from torch.utils.data import DataLoader, Dataset
 import pytorch_lightning as pl
 from sklearn.preprocessing import LabelEncoder
 
+class DKTDataset(Dataset):
+    def __init__(self, data: np.ndarray, args):
+        self.data = data
+        self.max_seq_len = args.max_seq_len
+
+    def __getitem__(self, index: int) -> dict:
+        row = self.data[index]
+
+        # Load from data
+        test, question, tag, correct = row[0], row[1], row[2], row[3]
+        data = {
+            "test": torch.tensor(test + 1, dtype=torch.int),
+            "question": torch.tensor(question + 1, dtype=troch.int),
+            "tag": torch.tensor(tag + 1, dtype=torch.int),
+            "correct": torch.tensor(correct, dtype=torch.int),
+        }
+
+        # gernerate mask & exec truncate or insert padding
+        seq_len = len(row[0])
+        if seq_len > self.max_seq_len:  # truncate
+            for k, seq in data.items():
+                data[k] = seq[-self.max_seq_len:]
+            mask = torch.ones(self.max_seq_len, dtype=torch.int16)
+        else:  # pre-padding
+            for k, seq in data.items():
+                tmp = torch.zeros(self.max_seq_len)
+                tmp[self.max_seq_len-seq_len:] = data[k]
+                data[k] = tmp
+            mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
+            mask[-seq_len:] = 1
+        data["mask"] = mask
+    
+        # generate interaction
+        interaction = data["correct"] + 1  # plus 1 for padding
+        interaction = interaction.roll(shifts=1)
+        interaction_mask = data["mask"].roll(shifts=1)
+        interaction_mask[0] = 0
+        interaction = (interaction * interaction_mask).to(torch.int64)
+        data["interaction"] = interaction
+        data = {k: v.int() for k, v in data.items()}
+        return data
+
+    def __len__(self) -> int:
+        return len(self.data)
 
 class DKTDataModule(pl.LightningDataModule):
     def __init__(self, args):
         super().__init__()
         self.args = args
         self.df = pd.DataFrame()
+
         self.train_data = None
         self.valid_data = None
         self.test_data = None
+
+        self.pin_memory = False
     
     # Fill feature engineering func if needed using self.df
     def __feature_engineering(self):
@@ -45,10 +93,6 @@ class DKTDataModule(pl.LightningDataModule):
             self.df[col] = self.df[col].astype(str)
             test = le.transform(self.df[col])
             self.df[col] = test
-
-        def convert_time(s: str):
-            timestamp = time.mktime(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple())
-            return int(timestamp)
 
         def convert_time(s: str):
             timestamp = time.mktime(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple())
@@ -101,14 +145,17 @@ class DKTDataModule(pl.LightningDataModule):
         # if stage == "test" or stage is None:
         #     self.test_data = group.values
 
-    def train_dataloader():
-        # return DataLoder()
-        pass
+    def train_dataloader(self):
+        trainset = DKTDataset(self.train_data, self.args)
+        print("trainset: ", len(trainset))
+        return DataLoader(trainset, batch_size=self.args.batch_size, shuffle=True, num_worker=self.args.num_workers, pin_memory=self.pin_memory)
 
-    def val_dataloader():
-        # return DataLoder()
-        pass
+    def val_dataloader(self):
+        valset = DKTDataset(self.valid_data, self.args)
+        print("valset: ", len(valset))
+        return DataLoader(valset, batch_size=self.args.batch_size, shuffle=False, num_worker=self.args.num_workers, pin_memory=self.pin_memory)
 
-    def test_dataloader():
-        # return DataLoder()
-        pass
+    # def test_dataloader(self):
+    #     testset = DKTDataset(self.test_data, self.args)
+    #     print("testset: ", len(testset))
+    #     return DataLoader(testset, batch_size=self.args.batch_size, shuffle=False, num_worker=self.args.num_workers, pin_memory=self.pin_memory)

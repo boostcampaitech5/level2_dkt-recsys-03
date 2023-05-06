@@ -13,6 +13,10 @@ def parse_args():
 
     parser.add_argument("--epoch", default=10, type=int, help="epochs to run")
     parser.add_argument("--batch_size", default=64, type=int, help="mini batch szie")
+    parser.add_argument("--num_workers", default=4, type=int, help="number of workers")
+
+    parser.add_argument("--max_seq_len", default=20, type=int, help="max sequence of length")
+
 
     args = parser.parse_args()
 
