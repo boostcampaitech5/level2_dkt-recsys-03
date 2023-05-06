@@ -1,3 +1,4 @@
+import random
 import pandas as pd
 from typing import Dict, Optional, List
 from omegaconf import DictConfig
@@ -32,16 +33,41 @@ class TabularDataModule:
 
     def setup(self):
         # split data based on validation startegy
+        splitter = TabularDataSplitter(self.config)
         if self.cv_strategy == 'holdout':
-            '''
-            TODO HoldoutValidationBuilder
-            '''
+            self.train_dataset, self.valid_dataset = splitter.split_data(self.train_data)
         elif self.cv_strategy == 'kfold':
-            '''
-            TODO KFoldValidationBuilder
-            '''
+            self.train_datasets, self.valid_datasets = splitter.split_data(self.train_data)
         else:
-            raise NotImplementedError
+            NotImplementedError
     
     def load_csv_file(self, path: str) -> pd.DataFrame:
         return pd.read_csv(path)
+
+
+class TabularDataSplitter:
+    def __init__(self, config: DictConfig):
+        self.cv_strategy: str = config.cv_strategy
+    
+    def split_data(self, df: pd.DataFrame, train_size=0.8, shuffle=True):
+        if self.cv_strategy == 'holdout':
+            users = list(zip(df['userID'].value_counts().index, df['userID'].value_counts()))
+            
+            if shuffle == True:
+                random.shuffle(users)
+
+            max_cnt = train_size*len(df)
+            total_cnt = 0
+            user_ids = []
+            for user_id, cnt in users:
+                total_cnt += cnt
+                if max_cnt < total_cnt:
+                    break
+                user_ids.append(user_id)
+
+            train_data = df[df['userID'].isin(user_ids)]
+            test_data = df[df['userID'].isin(user_ids) == False]
+            return train_data, test_data
+    
+        else:
+            raise NotImplementedError
