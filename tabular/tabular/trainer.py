@@ -15,7 +15,7 @@ class Trainer:
         self.config = config
         self.model: Opional[lgb.LGBMClassifier] = None
 
-        self.datamodule = datamodule
+        self.datamodule: TabularDataModule = datamodule
 
         self.train_dataset: TabularDataset = datamodule.train_dataset
         self.valid_dataset: TabularDataset = datamodule.valid_dataset
@@ -51,8 +51,8 @@ class Trainer:
     def load_model_pkl(self):
         directory = os.path.join(self.config.output_dir, self.config.timestamp)
         filename = self.config.timestamp+'.pkl'
-
         load_path = os.path.join(directory, filename)
+
         with open(load_path, 'rb') as f:
             model = pickle.load(f)
         return model
