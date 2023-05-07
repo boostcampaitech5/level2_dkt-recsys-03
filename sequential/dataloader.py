@@ -21,7 +21,7 @@ class DKTDataset(Dataset):
         test, question, tag, correct = row[0], row[1], row[2], row[3]
         data = {
             "test": torch.tensor(test + 1, dtype=torch.int),
-            "question": torch.tensor(question + 1, dtype=troch.int),
+            "question": torch.tensor(question + 1, dtype=torch.int),
             "tag": torch.tensor(tag + 1, dtype=torch.int),
             "correct": torch.tensor(correct, dtype=torch.int),
         }
