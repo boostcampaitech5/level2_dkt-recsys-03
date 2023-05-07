@@ -4,7 +4,7 @@ defaults:
   - model: LGBM.yaml
   - paths: default.yaml
 
-cv_strategy: holdout
+cv_strategy: kfold
 
 seed: 42
 
