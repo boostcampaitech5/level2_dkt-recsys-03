@@ -11,7 +11,7 @@ profile_default/
 ipython_config.py
 
 # logs
-.log
+*.log
 log
 
 # MacOS
@@ -21,7 +21,10 @@ log
 key
 
 # environment
-.env
+*.env
 
 # output
 /tabular/output
+
+# .yaml
+*.yaml

@@ -6,8 +6,8 @@ import lightgbm as lgb
 from omegaconf import DictConfig
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
-from data import TabularDataModule
-from data import TabularDataset
+from tabular.data import TabularDataModule
+from tabular.data import TabularDataset
 
 
 class Trainer:
@@ -40,7 +40,7 @@ class Trainer:
             raise NotImplementedError
 
     def save_model_pkl(self, model):
-        directory = os.path.join(self.config.output_dir, self.config.timestamp)
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = self.config.timestamp+'.pkl'
         save_path = os.path.join(directory, filename)
 
@@ -49,16 +49,16 @@ class Trainer:
             pickle.dump(model, fw)
     
     def load_model_pkl(self):
-        directory = os.path.join(self.config.output_dir, self.config.timestamp)
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = self.config.timestamp+'.pkl'
         load_path = os.path.join(directory, filename)
-        
+
         with open(load_path, 'rb') as f:
             model = pickle.load(f)
         return model
     
     def save_result_csv(self, result: pd.DataFrame, type: str):
-        directory = os.path.join(self.config.output_dir, self.config.timestamp)
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{type}.csv"
         save_path = os.path.join(directory, filename)
 
@@ -93,7 +93,7 @@ class Trainer:
         pb_test = model.predict_proba(self.x_test)[:, 1]
         
         if is_submit == True:
-            data_dir = self.config.data_dir
+            data_dir = self.config.paths.data_dir
             submission = pd.read_csv(data_dir+'sample_submission.csv')
             submission['prediction'] = p_test
             self.save_result_csv(submission, 'submission')
