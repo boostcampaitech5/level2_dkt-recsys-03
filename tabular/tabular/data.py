@@ -75,9 +75,21 @@ class TabularDataProcessor:
         return df
     
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        TODO
-        """ 
+        df.sort_values(by=['userID', 'Timestamp'], inplace=True)
+        # userID별 문제 풀이 수
+        df['user_total_answer'] = df.groupby('userID')['answerCode'].cumcount()
+        # userID별 정답 수
+        df['user_correct_answer'] = df.groupby('userID')['answerCode'].transform(lambda x: x.cumsum().shift(1))
+        # userID별 정답률
+        df['user_acc'] = df['user_correct_answer']/df['user_total_answer']
+        # testId별 정답률
+        correct_t = df.groupby(['testId'])['answerCode'].agg(['mean', 'sum'])
+        correct_t.columns = ["test_mean", 'test_sum']
+        df = pd.merge(df, correct_t, on=['testId'], how="left")
+        # KnowledgeTag별 정답률
+        correct_k = df.groupby(['KnowledgeTag'])['answerCode'].agg(['mean', 'sum'])
+        correct_k.columns = ["tag_mean", 'tag_sum']
+        df = pd.merge(df, correct_k, on=['KnowledgeTag'], how="left")
         return df
 
 
@@ -107,5 +119,6 @@ class TabularDataset:
         if is_train == False:
             df = df[df['userID'] != df['userID'].shift(-1)]
 
-        self.X = df.drop(['answerCode'], axis=1)
+        features = ['KnowledgeTag', 'user_correct_answer', 'user_total_answer', 'user_acc', 'test_mean', 'test_sum', 'tag_mean','tag_sum']
+        self.X = df[features]
         self.y = df['answerCode']
