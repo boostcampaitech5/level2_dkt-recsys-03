@@ -25,6 +25,4 @@ key
 
 # output
 /tabular/output
-
-# .yaml
-*.yaml
+/tabular/outputs
