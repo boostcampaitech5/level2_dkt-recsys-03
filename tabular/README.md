@@ -1,5 +1,23 @@
 # Tabular approach
 
+## Structure
+```
+│
+├── configs                   <- Hydra configs
+│   ├── model                    <- Model configs
+│   ├── paths                    <- Project paths configs
+│   │
+│   └──config.yaml           <- Main config
+│
+├── tabular                    <- Source code
+│   ├── data                     <- Data scripts
+│   ├── models                   <- Model scripts
+│   └── utils                    <- Utility scripts
+│
+├── main.py                  <- Run training and inference
+├── requirements.txt         <- File for installing python dependencies
+└── README.md
+```
 ## Setup
 ```bash
 cd /opt/ml/level2_dkt_recsys-03/tabular/
