@@ -2,3 +2,8 @@ __pycache__
 
 assets/
 *.npy
+
+.ipynb_checkpoints/
+sequential/ipynb_checkpoints/
+*.ipynb
+lightning_logs/
