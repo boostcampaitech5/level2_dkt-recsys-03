@@ -1,3 +1,4 @@
+import os
 import random
 import pandas as pd
 from typing import Dict, List, Union, Optional
@@ -9,8 +10,8 @@ class TabularDataModule:
     def __init__(self, config: DictConfig):
         self.config = config
         
-        self.train_data_path: str = config.train_data_path
-        self.test_data_path: str = config.test_data_path
+        self.train_data_path: str = os.path.join(config.data_dir, 'train_data.csv')
+        self.test_data_path: str = os.path.join(config.data_dir, 'test_data.csv')
         self.cv_strategy: str = config.cv_strategy
 
         self.train_data: Union[pd.DataFrame, List[pd.DataFrame], None] = None
