@@ -1,0 +1,11 @@
+# spercify here default configurations
+defaults:
+  - _self_
+  - model: LGBM.yaml
+  - paths: default.yaml
+
+cv_strategy: holdout
+
+seed: 42
+
+timestamp:

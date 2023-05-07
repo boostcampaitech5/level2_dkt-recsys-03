@@ -1,1 +1,28 @@
-__pycache__
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# logs
+*.log
+log
+
+# MacOS
+.DS_Store
+
+# For somebody who try to upload key file.. :)
+key
+
+# environment
+*.env
+
+# output
+/tabular/output
+/tabular/outputs
