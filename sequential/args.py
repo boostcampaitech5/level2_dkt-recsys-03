@@ -17,7 +17,6 @@ def parse_args():
 
     parser.add_argument("--max_seq_len", default=20, type=int, help="max sequence of length")
 
-
     args = parser.parse_args()
 
     return args

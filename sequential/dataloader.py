@@ -74,7 +74,7 @@ class DKTDataModule(pl.LightningDataModule):
     # Encode and Save/Load data
     def __preprocessing(self, is_train: bool = True):
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
-        print(">>>>> Now is_train of preprocess is", is_train)
+        print(">>> >>> Now is_train of preprocess is", is_train)
 
         # convert time data to int timestamp
         def convert_time(s: str):
@@ -136,7 +136,7 @@ class DKTDataModule(pl.LightningDataModule):
     def setup(self, stage = None):
         if stage == "fit" or stage is None:
             self.__preprocessing()
-        if stage == "test" or stage is None:
+        if stage == "predict" or stage is None:
             self.__preprocessing(is_train=False)
         
         self.args.n_questions = len(np.load(os.path.join(self.args.asset_path, "assessmentItemID_classes.npy")))
@@ -157,7 +157,7 @@ class DKTDataModule(pl.LightningDataModule):
             )
             self.split_data(group.values)
 
-        if stage == "test" or stage is None:
+        if stage == "predict" or stage is None:
             self.test_df = self.test_df.sort_values(by=["userID","Timestamp"], axis=0)
             group = self.test_df[columns].groupby("userID").apply(
                 lambda r: (
@@ -171,15 +171,15 @@ class DKTDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         trainset = DKTDataset(self.train_data, self.args)
-        print("trainset: ", len(trainset))
+        print(">>> >>> trainset: ", len(trainset))
         return DataLoader(trainset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
 
     def val_dataloader(self):
         valset = DKTDataset(self.valid_data, self.args)
-        print("valset: ", len(valset))
+        print(">>> >>> valset: ", len(valset))
         return DataLoader(valset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
 
-    def test_dataloader(self):
+    def predict_dataloader(self):
         testset = DKTDataset(self.test_data, self.args)
-        print("testset: ", len(testset))
+        print(">>> >>> testset: ", len(testset))
         return DataLoader(testset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)

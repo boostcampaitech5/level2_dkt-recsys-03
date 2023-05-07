@@ -5,8 +5,9 @@ from torch.nn import functional as F
 
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader, random_split
-
 import pytorch_lightning as pl
+
+from .metrics import get_metric
 
 
 class ModelBase(pl.LightningModule):
@@ -38,6 +39,7 @@ class ModelBase(pl.LightningModule):
         # Fully connected layer
         self.fc = nn.Linear(hd, 1)
 
+        self.training_step_outputs = []
         self.validation_step_outputs = []
         self.test_step_outputs= []
 
@@ -64,7 +66,9 @@ class ModelBase(pl.LightningModule):
     def compute_loss(self, preds: torch.Tensor, targets: torch.Tensor):
         loss = torch.nn.BCEWithLogitsLoss(reduction="none")
         loss_val = loss(preds, targets.float())
-        loss_val = loss_val[:, -1]  # using only last sequence
+
+        # using only last sequence
+        loss_val = loss_val[:, -1]
         loss_val = torch.mean(loss_val)
         return loss_val
 
@@ -74,15 +78,15 @@ class ModelBase(pl.LightningModule):
         scheduler = StepLR(optimizer, step_size=1)
         return [optimizer], [scheduler]
     
-    # training step on batch
     def training_step(self, batch, batch_idx):
         output = self(**batch) # predict
         target = batch["correct"]
         loss = self.compute_loss(output, target) # loss
 
+        preds = F.sigmoid(output[:, -1])
+        self.training_step_outputs.append(preds)
         return loss
     
-    # validation_step after training_step
     def validation_step(self, batch, batch_id):
         output = self(**batch) # predict
         target = batch["correct"]
@@ -90,38 +94,23 @@ class ModelBase(pl.LightningModule):
 
         pred = F.sigmoid(output[:, -1])
         target = target[:, -1]
-        correct = pred.eq(target.view_as(pred)).sum().item()
 
-        results = {"val_loss" : loss, "correct" : correct}
-        self.validation_step_outputs.append(results)
+        auc, acc = get_metric(targets=target, preds=pred)
+        metrics = {"val_loss" : loss, "val_auc" : auc, "val_acc" : acc}
+        self.validation_step_outputs.append(metrics)
 
-        return results
+        return metrics
 
-    # after 1 validation epoch
     def on_validation_epoch_end(self):
         avg_loss = torch.stack([x['val_loss'] for x in self.validation_step_outputs]).mean()
         self.log('val_loss', avg_loss) # 로깅 추가
         self.log('avg_val_loss', avg_loss) # 로깅 추가 -> 텐서보드에 자동으로 업데이트
         self.validation_step_outputs.clear()
     
-    def test_step(self, batch, batch_idx):
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
         output = self(**batch) # predict
-        target = batch["correct"]
-
         pred = F.sigmoid(output[:, -1])
-        target = target[:, -1]
-        correct = pred.eq(target.view_as(pred)).sum().item()/ len(target)
-
-        results = {"correct": correct}
-        self.test_step_outputs.append(results)
-    
-    def on_test_epoch_end(self):
-        outputs = self.test_step_outputs
-        all_correct = sum([output["correct"] for output in outputs])
-        accuracy = all_correct / len(outputs)
-
-        self.log("accuracy", accuracy)
-        self.test_step_outputs.clear()
+        return output
 
 
 class LSTM(ModelBase):
