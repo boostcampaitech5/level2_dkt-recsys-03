@@ -3,13 +3,10 @@ defaults:
   - _self_
   - model: LGBM.yaml
   - paths: default.yaml
+  - wandb: default.yaml
 
 cv_strategy: kfold
 
 seed: 42
 
 timestamp:
-name: 
-project: DKT
-entity: recsys01
-
