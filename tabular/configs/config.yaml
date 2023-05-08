@@ -9,3 +9,7 @@ cv_strategy: kfold
 seed: 42
 
 timestamp:
+name: 
+project: DKT
+entity: recsys01
+
