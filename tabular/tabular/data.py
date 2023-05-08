@@ -11,7 +11,7 @@ class TabularDataModule:
         self.config = config
         
         self.train_data_path: str = os.path.join(config.paths.data_dir, 'train_data.csv')
-        self.test_data_path: str = os.path.join(config.paths.data_dir, 'test_data.csv')
+        self.test_data_path: str = os.path.join(config.paths.data_dir, 'valid_data.csv')
         self.cv_strategy: str = config.cv_strategy
 
         self.train_data: Union[pd.DataFrame, List[pd.DataFrame], None] = None

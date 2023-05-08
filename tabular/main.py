@@ -19,15 +19,12 @@ def main(config: omegaconf.DictConfig=None) -> None:
     
     # wandb setting
     dotenv.load_dotenv()
-    
     WANDB_API_KEY = os.environ.get('WANDB_API_KEY')
     wandb.login(key=WANDB_API_KEY)
     run = wandb.init(project=config.project, entity=config.entity, name=config.name)
     run.tags = [config.model.name, config.cv_strategy]
     wandb.save(f"./configs/config.yaml")
     wandb.save(f"./configs/model/LGBM.yaml")
-    
-
     
     # setup datamodule
     print("Setup datamodule...")

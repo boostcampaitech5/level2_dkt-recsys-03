@@ -155,7 +155,7 @@ class CrossValidationTrainer(Trainer):
             result = pd.DataFrame({'userID': user_id, 'prob': pb_valid, 'pred': p_valid, 'true': valid.y})
             self.save_result_csv(result, fold=str(i), type='valid')
     
-    def oof(self, is_submit: bool = True):
+    def oof(self, is_submit: bool = False):
         test = self.test_dataset
         pred = []
         for i in range(5):
