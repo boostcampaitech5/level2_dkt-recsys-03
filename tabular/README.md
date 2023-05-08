@@ -11,7 +11,7 @@
 │
 ├── tabular                    <- Source code
 │   ├── data                     <- Data scripts
-│   ├── models                   <- Model scripts
+│   ├── model                    <- Model scripts
 │   └── utils                    <- Utility scripts
 │
 ├── main.py                  <- Run training and inference
