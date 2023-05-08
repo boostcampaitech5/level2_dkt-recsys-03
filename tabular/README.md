@@ -32,3 +32,8 @@ conda init
 ```bash
 python main.py
 ```
+## TODO
+- [ ] log
+- [ ] wandb
+- [ ] features -> config
+- [ ] is_submit -> config
