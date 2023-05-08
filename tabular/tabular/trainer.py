@@ -80,12 +80,10 @@ class Trainer:
         valid_auc = roc_auc_score(valid.y, p_valid)
         valid_acc = accuracy_score(valid.y, p_valid)
 
-        print(f"train auc:{train_auc} train acc:{train_acc}")
-        print(f"valid auc:{valid_auc} valid acc:{valid_acc}")
+        print(f"fold:{i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
         
         # wandb logging
-        wandb.log({"train auc" : train_auc, "train acc" : train_acc})
-        wandb.log({"valid auc" : valid_auc, "valid acc" : valid_acc})
+        wandb.log({"fold":i, "train auc" : train_auc, "valid auc" : valid_auc, "train acc" : train_acc, "valid acc" : valid_acc})
 
         pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
 
@@ -93,7 +91,7 @@ class Trainer:
         result = pd.DataFrame({'userID': user_id, 'prob': pb_valid, 'pred': p_valid, 'true': valid.y})
         self.save_result_csv(result, 'valid')
 
-    def inference(self, is_submit: bool = True):
+    def inference(self, is_submit: bool = False):
         test = self.datamodule.test_dataset
 
         model = self.load_model_pkl()
@@ -123,7 +121,7 @@ class CrossValidationTrainer(Trainer):
     def __init__(self, config: DictConfig, datamodule: TabularDataModule):
         super().__init__(config, datamodule)
         self.config = config
-        self.dataomodule: TabularDataModule = datamodule
+        self.datamodule: TabularDataModule = datamodule
         self.train_dataset: List[TabularDataset] = datamodule.train_dataset
         self.valid_datset: List[TabularDataset] = datamodule.valid_dataset
         self.test_dataset: TabularDataset = datamodule.test_dataset
@@ -142,12 +140,10 @@ class CrossValidationTrainer(Trainer):
             valid_auc = roc_auc_score(valid.y, p_valid)
             valid_acc = accuracy_score(valid.y, p_valid)
 
-            print(f"fold:{i} train auc:{train_auc} train acc:{train_acc}")
-            print(f"fold:{i} valid auc:{valid_auc} valid acc:{valid_acc}")
+            print(f"fold:{i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
             # wandb logging
-            wandb.log({"fold":i, "train auc" : train_auc, "train acc" : train_acc})
-            wandb.log({"fold":i, "valid auc" : valid_auc, "valid acc" : valid_acc})
+            wandb.log({"fold":i, "train auc" : train_auc, "valid auc" : valid_auc, "train acc" : train_acc, "valid acc" : valid_acc})
 
             pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
 
@@ -176,7 +172,7 @@ class CrossValidationTrainer(Trainer):
             print(f"test auc:{test_auc} test acc:{test_acc}")
             wandb.log({"test auc" : test_auc, "test acc" : test_acc})
 
-            user_id = self.datamoudle.test_data['userID'].unique()
+            user_id = self.datamodule.test_data['userID'].unique()
             result = pd.DataFrame({'userID': user_id, 'prob': pb_test, 'pred': p_test, 'true': test.y})
             self.save_result_csv(result, type='test')
 
