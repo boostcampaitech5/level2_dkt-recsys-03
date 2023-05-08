@@ -1,5 +1,6 @@
 import os
 import pickle
+import wandb
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -38,6 +39,9 @@ class Trainer:
         os.makedirs(directory, exist_ok=True)
         with open(save_path, 'wb') as fw:
             pickle.dump(model, fw)
+        
+        # wandb saving
+        wandb.save(save_path)
     
     def load_model_pkl(self, fold=""):
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
@@ -55,6 +59,9 @@ class Trainer:
 
         os.makedirs(directory, exist_ok=True)
         result.to_csv(save_path, index=False)
+        
+        # wandb saving
+        wandb.save(save_path)
 
     def train(self):
         model = self.get_model()
@@ -75,6 +82,10 @@ class Trainer:
 
         print(f"train auc:{train_auc} train acc:{train_acc}")
         print(f"valid auc:{valid_auc} valid acc:{valid_acc}")
+        
+        # wandb logging
+        wandb.log({"train auc" : train_auc, "train acc" : train_acc})
+        wandb.log({"valid auc" : valid_auc, "valid acc" : valid_acc})
 
         pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
 
@@ -99,6 +110,9 @@ class Trainer:
             test_auc = roc_auc_score(test.y, p_test)
             test_acc = accuracy_score(test.y, p_test)
             print(f"test auc:{test_auc} test acc:{test_acc}")
+            
+            # wandb logging
+            wandb.log({"test auc" : test_auc, "test acc" : test_acc})
 
             user_id = self.datamoudle.test_data['userID'].unique()
             result = pd.DataFrame({'userID': user_id, 'prob': pb_test, 'pred': p_test, 'true': test.y})
@@ -131,6 +145,10 @@ class CrossValidationTrainer(Trainer):
             print(f"fold:{i} train auc:{train_auc} train acc:{train_acc}")
             print(f"fold:{i} valid auc:{valid_auc} valid acc:{valid_acc}")
 
+            # wandb logging
+            wandb.log({"fold":i, "train auc" : train_auc, "train acc" : train_acc})
+            wandb.log({"fold":i, "valid auc" : valid_auc, "valid acc" : valid_acc})
+
             pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
 
             user_id = self.datamodule.valid_data[i]['userID'].unique()
@@ -156,6 +174,7 @@ class CrossValidationTrainer(Trainer):
             test_auc = roc_auc_score(test.y, p_test)
             test_acc = accuracy_score(test.y, p_test)
             print(f"test auc:{test_auc} test acc:{test_acc}")
+            wandb.log({"test auc" : test_auc, "test acc" : test_acc})
 
             user_id = self.datamoudle.test_data['userID'].unique()
             result = pd.DataFrame({'userID': user_id, 'prob': pb_test, 'pred': p_test, 'true': test.y})
