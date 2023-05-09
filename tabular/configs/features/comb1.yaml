@@ -1,0 +1,6 @@
+# @package _global_
+features:
+  - KnowledgeTag
+  - user_acc
+  - test_mean
+  - tag_mean
