@@ -87,7 +87,7 @@ class ModelBase(pl.LightningModule):
         self.training_step_outputs.append(preds)
         return loss
     
-    def validation_step(self, batch, batch_id):
+    def validation_step(self, batch, batch_idx):
         output = self(**batch) # predict
         target = batch["correct"]
         loss = self.compute_loss(output, target) # loss
@@ -103,6 +103,7 @@ class ModelBase(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         avg_loss = torch.stack([x['val_loss'] for x in self.validation_step_outputs]).mean()
+        print(">>> >>> avg_loss: ", avg_loss)
         self.log('val_loss', avg_loss) # 로깅 추가
         self.log('avg_val_loss', avg_loss) # 로깅 추가 -> 텐서보드에 자동으로 업데이트
         self.validation_step_outputs.clear()
@@ -110,7 +111,8 @@ class ModelBase(pl.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         output = self(**batch) # predict
         pred = F.sigmoid(output[:, -1])
-        return output
+        pred = pred.cpu().detach().numpy()
+        return pred
 
 
 class LSTM(ModelBase):

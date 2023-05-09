@@ -7,6 +7,7 @@ def parse_args():
     parser.add_argument("--device", default="cpu", type=str, help="cpu or gpu")
     parser.add_argument("--data_path", default="/opt/ml/input/data/", type=str, help="csvdata path")
     parser.add_argument("--asset_path", default="asset/", type=str, help="asset data path")
+    parser.add_argument("--output_path", default="outputs/", type=str, help="output directory")
 
     parser.add_argument("--train_file", default="train_data.csv", type=str, help="train file name")
     parser.add_argument("--test_file", default="test_data.csv", type=str, help="test file name")
