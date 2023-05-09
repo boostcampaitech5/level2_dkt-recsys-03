@@ -171,7 +171,7 @@ class CrossValidationTrainer(Trainer):
             self.save_result_csv(result, fold=str(i), type='valid')
         
         print(f"cv_score:{cv_score}")
-        wandb.run.summary['cv score'] = cv_score
+        wandb.log({'cv_score': cv_score})
     
     def oof(self, is_submit: bool = False) -> None:
         test = self.test_dataset

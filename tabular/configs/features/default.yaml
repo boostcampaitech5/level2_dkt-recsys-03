@@ -1,0 +1,10 @@
+# @package _global_
+features:
+  - KnowledgeTag
+  - user_correct_answer
+  - user_total_answer
+  - user_acc
+  - test_mean
+  - test_sum
+  - tag_mean
+  - tag_sum

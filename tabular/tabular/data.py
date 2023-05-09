@@ -40,21 +40,21 @@ class TabularDataModule:
             self.train_data = self.processor.feature_engineering(train_data)
             self.valid_data = self.processor.feature_engineering(valid_data)
 
-            self.train_dataset = TabularDataset(self.train_data)
-            self.valid_dataset = TabularDataset(self.valid_data, is_train=False)
+            self.train_dataset = TabularDataset(self.config, self.train_data)
+            self.valid_dataset = TabularDataset(self.config, self.valid_data, is_train=False)
 
         elif self.cv_strategy == 'kfold':
             self.train_data = [self.processor.feature_engineering(df) for df in train_data]
             self.valid_data = [self.processor.feature_engineering(df) for df in valid_data]
 
-            self.train_dataset = [TabularDataset(df) for df in self.train_data]
-            self.valid_dataset = [TabularDataset(df, is_train=False) for df in self.valid_data]
+            self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
+            self.valid_dataset = [TabularDataset(self.config, df, is_train=False) for df in self.valid_data]
 
         else:
             raise NotImplementedError
 
         self.test_data = self.processor.feature_engineering(self.test_data)
-        self.test_dataset = TabularDataset(self.test_data, is_train=False)
+        self.test_dataset = TabularDataset(self.config, self.test_data, is_train=False)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
@@ -116,10 +116,10 @@ class TabularDataSplitter:
 
 
 class TabularDataset:
-    def __init__(self, df: pd.DataFrame, is_train=True):
+    def __init__(self, config: DictConfig, df: pd.DataFrame, is_train=True):
         if is_train == False:
             df = df[df['userID'] != df['userID'].shift(-1)]
 
-        features = ['KnowledgeTag', 'user_correct_answer', 'user_total_answer', 'user_acc', 'test_mean', 'test_sum', 'tag_mean','tag_sum']
+        features: List = config.features
         self.X = df[features]
         self.y = df['answerCode']
