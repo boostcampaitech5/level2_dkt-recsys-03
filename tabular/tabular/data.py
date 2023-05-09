@@ -32,8 +32,8 @@ class TabularDataModule:
         test_data: pd.DataFrame = self.load_csv_file(self.test_data_path)
         # data preprocessing
         self.processor = TabularDataProcessor(self.config, self.feature_manager)
-        self.train_data = self.processor.preprocessing(train_data)
-        self.test_data = self.processor.preprocessing(test_data)
+        self.train_data = self.processor.preprocessing(train_data, is_train=True)
+        self.test_data = self.processor.preprocessing(test_data, is_train=False)
 
     def setup(self):
         # split data based on validation startegy
@@ -44,21 +44,21 @@ class TabularDataModule:
             self.train_data = self.processor.feature_engineering(train_data)
             self.valid_data = self.processor.feature_engineering(valid_data)
 
-            self.train_dataset = TabularDataset(self.train_data, self.feature_manager)
-            self.valid_dataset = TabularDataset(self.valid_data, self.feature_manager, is_train=False)
+            self.train_dataset = TabularDataset(self.config, self.train_data)
+            self.valid_dataset = TabularDataset(self.config, self.valid_data, is_train=False)
 
         elif self.cv_strategy == 'kfold':
             self.train_data = [self.processor.feature_engineering(df) for df in train_data]
             self.valid_data = [self.processor.feature_engineering(df) for df in valid_data]
 
-            self.train_dataset = [TabularDataset(df, self.feature_manager) for df in self.train_data]
-            self.valid_dataset = [TabularDataset(df, self.feature_manager, is_train=False) for df in self.valid_data]
+            self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
+            self.valid_dataset = [TabularDataset(self.config, df, is_train=False) for df in self.valid_data]
 
         else:
             raise NotImplementedError
 
         self.test_data = self.processor.feature_engineering(self.test_data)
-        self.test_dataset = TabularDataset(self.test_data, self.feature_manager, is_train=False)
+        self.test_dataset = TabularDataset(self.config, self.test_data, is_train=False)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
         dtype = {
@@ -74,13 +74,13 @@ class TabularDataProcessor:
         self.config = config
         self.feature_manager = fm
         
-    def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
-        if self.feature_manager.need_feature_creation():
-            print('Saving features Dataframe csv..')
-            self.feature_manager.create_features(df)
+    def preprocessing(self, df: pd.DataFrame, is_train=True) -> pd.DataFrame:
+        if self.feature_manager.need_feature_creation(is_train):
+            print(f'Saving features Dataframe csv.. is_train : {is_train}')
+            self.feature_manager.create_features(df, is_train)
         
-        print('Loading features Dataframe csv..')
-        df = self.feature_manager.prepare_df(self.config.features, df)
+        print(f'Loading features Dataframe csv.. is_train : {is_train}')
+        df = self.feature_manager.prepare_df(self.config.features, df, is_train)
         return df
     
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -124,11 +124,9 @@ class TabularDataSplitter:
 
 
 class TabularDataset:
-    def __init__(self, df: pd.DataFrame, fm: FeatureManager, is_train=True):
+    def __init__(self, config: DictConfig, df: pd.DataFrame, is_train=True):
         if is_train == False:
             df = df[df['userID'] != df['userID'].shift(-1)]
 
-        features = ['KnowledgeTag', 'user_correct_answer', 'user_total_answer', 'user_acc', 'test_mean', 'test_sum', 'tag_mean','tag_sum']
-        features = features + fm.feature_columns()
-        self.X = df[features]
+        self.X = df[config.features.features]
         self.y = df['answerCode']

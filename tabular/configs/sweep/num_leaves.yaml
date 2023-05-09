@@ -1,0 +1,16 @@
+project: DKT
+entity: recsys01
+program: main.py
+method: grid
+metric:
+  goal: maximize
+  name: cv_score
+parameters:
+  model.params.num_leaves:
+    values: [31, 63]
+
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args_no_hyphens}

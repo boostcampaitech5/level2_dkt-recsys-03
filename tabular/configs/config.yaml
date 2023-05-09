@@ -1,10 +1,10 @@
 # spercify here default configurations
 defaults:
   - _self_
+  - features: default.yaml
   - model: LGBM.yaml
   - paths: default.yaml
   - wandb: default.yaml
-  - features: default.yaml
 
 cv_strategy: kfold
 

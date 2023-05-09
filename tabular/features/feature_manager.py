@@ -13,21 +13,26 @@ class FeatureManager:
     
     
     ####### 피쳐 업데이트 확인
-    def need_feature_creation(self):
+    def need_feature_creation(self, is_train: bool = True):
         '''
         피쳐 생성이 필요한가?
         
         True: 피쳐가 추가된 경우, 피쳐 csv가 없는 경우 
         False: 피쳐 csv가 이미 있고, 현재 최신상태인 경우
         '''
-        if not path.exists(self.csv_path):
+        if is_train:
+            csv_path_ = self.__train_feature_csv_path()
+        else:
+            csv_path_ = self.__test_feature_csv_path()
+        
+        if not path.exists(csv_path_):
             return True
-        if not path.exists(f'{self.csv_path}.chk'):
+        if not path.exists(f'{csv_path_}.chk'):
             return True
         
         #### feature_processors로 해시 값을 구한뒤, 이 값으로 업데이트 여부를 판단
         curr_process_col_v = str(self.feature_columns())
-        with open(f'{self.csv_path}.chk', 'r') as chk_f:
+        with open(f'{csv_path_}.chk', 'r') as chk_f:
             col_v = chk_f.readline().rstrip()
             
             if col_v != curr_process_col_v:
@@ -37,7 +42,7 @@ class FeatureManager:
     
     
     ####### 피쳐 생성
-    def create_features(self, df_: pd.DataFrame) -> pd.DataFrame:
+    def create_features(self, df_: pd.DataFrame, isTrain: bool = True) -> pd.DataFrame:
         '''
         피쳐를 생성함.
         '''
@@ -61,22 +66,27 @@ class FeatureManager:
                 col_ = self.__col_opt(col, args)
                 df.loc[:, col_] = processor.create_feature(df, **kwargs)
                 
-        self.__dump_features_to_csv(df)
+        self.__dump_features_to_csv(df, isTrain)
         return df
     
     
-    def __dump_features_to_csv(self, df: pd.DataFrame) -> None:
-        df.to_csv(self.csv_path)
+    def __dump_features_to_csv(self, df: pd.DataFrame, is_train: bool = True) -> None:
+        if is_train:
+            csv_path_ = self.__train_feature_csv_path()
+        else:
+            csv_path_ = self.__test_feature_csv_path()
         
-        with open(f'{self.csv_path}.chk', 'w') as chk_f:
+        df.to_csv(csv_path_)
+        
+        with open(f'{csv_path_}.chk', 'w') as chk_f:
             curr_process_col_v = str(self.feature_columns())
             chk_f.write(curr_process_col_v)
     
     
     ####### 피쳐 로딩
-    def prepare_df(self, option: dict, df: pd.DataFrame) -> pd.DataFrame:
+    def prepare_df(self, option: dict, df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
         '''피쳐 목록 선택'''
-        f_df = self.__load_feature_df()
+        f_df = self.__load_feature_df(is_train)
         
         for processor in self.feature_processors:
             col = processor.columns()
@@ -99,11 +109,26 @@ class FeatureManager:
         return [p.columns() for p in self.feature_processors]
     
     
-    def __load_feature_df(self) -> pd.DataFrame:
-        f_df = pd.read_csv(self.csv_path, parse_dates=['Timestamp'])
+    def __load_feature_df(self, is_train: bool = True) -> pd.DataFrame:
+        if is_train:
+            csv_path_ = self.__train_feature_csv_path()
+        else:
+            csv_path_ = self.__test_feature_csv_path()
+        
+        f_df = pd.read_csv(csv_path_, parse_dates=['Timestamp'])
         return f_df.sort_values(by=['userID', 'Timestamp']).reset_index(drop=True)
     
     
     def __col_opt(self, col: str, args: list) -> str:
         args = tuple(args)
         return f'{col}#{args}'
+    
+    
+    def __test_feature_csv_path(self) -> str:
+        tokens = self.csv_path.split('.')
+        return '.'.join(tokens[:-1] + ['test'] + [tokens[-1]])
+    
+    
+    def __train_feature_csv_path(self) -> str:
+        tokens = self.csv_path.split('.')
+        return '.'.join(tokens[:-1] + ['train'] + [tokens[-1]])
