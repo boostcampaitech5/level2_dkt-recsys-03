@@ -74,7 +74,6 @@ class DKTDataModule(pl.LightningDataModule):
     # Encode and Save/Load data
     def __preprocessing(self, is_train: bool = True):
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
-        print(">>> >>> Now is_train of preprocess is", is_train)
 
         # convert time data to int timestamp
         def convert_time(s: str):

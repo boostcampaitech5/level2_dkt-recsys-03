@@ -7,3 +7,5 @@ assets/
 sequential/ipynb_checkpoints/
 *.ipynb
 lightning_logs/
+*.csv
+*.log

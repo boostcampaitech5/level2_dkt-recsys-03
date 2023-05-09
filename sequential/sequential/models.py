@@ -8,6 +8,10 @@ from torch.utils.data import DataLoader, random_split
 import pytorch_lightning as pl
 
 from .metrics import get_metric
+from .utils import get_logger, logging_conf
+
+
+logger = get_logger(logging_conf)
 
 
 class ModelBase(pl.LightningModule):
@@ -96,16 +100,18 @@ class ModelBase(pl.LightningModule):
         target = target[:, -1]
 
         auc, acc = get_metric(targets=target, preds=pred)
-        metrics = {"val_loss" : loss, "val_auc" : auc, "val_acc" : acc}
+        metrics = {"val_loss" : loss, "val_auc" : torch.tensor(auc), "val_acc" : torch.tensor(acc)}
         self.validation_step_outputs.append(metrics)
 
         return metrics
 
     def on_validation_epoch_end(self):
         avg_loss = torch.stack([x['val_loss'] for x in self.validation_step_outputs]).mean()
-        print(">>> >>> avg_loss: ", avg_loss)
-        self.log('val_loss', avg_loss) # 로깅 추가
-        self.log('avg_val_loss', avg_loss) # 로깅 추가 -> 텐서보드에 자동으로 업데이트
+        avg_auc = torch.stack([x['val_auc'] for x in self.validation_step_outputs]).mean()
+        avg_acc = torch.stack([x['val_acc'] for x in self.validation_step_outputs]).mean()
+
+        logger.info(f"avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
+
         self.validation_step_outputs.clear()
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):

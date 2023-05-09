@@ -6,10 +6,10 @@ import pytorch_lightning as pl
 
 from sequential.dataloader import DKTDataModule
 from sequential.args import parse_args
-from sequential.utils import set_seeds, get_logger
+from sequential.utils import set_seeds, get_logger, logging_conf
 from sequential.models import LSTM
 
-logger = get_logger()
+logger = get_logger(logging_conf)
 
 def main():
 
