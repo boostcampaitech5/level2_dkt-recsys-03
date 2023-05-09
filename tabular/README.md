@@ -6,13 +6,15 @@
 ├── configs                   <- Hydra configs
 │   ├── model                    <- Model configs
 │   ├── paths                    <- Project paths configs
+│   ├── wandb                    <- W&B configs
 │   │
 │   └──config.yaml           <- Main config
 │
 ├── tabular                    <- Source code
-│   ├── data                     <- Data scripts
-│   ├── trainer                  <- Trainer scripts
-│   └── utils                    <- Utility scripts
+│   ├── data.py                     <- Data scripts
+│   ├── metric.py                   <- Metric scripts
+│   ├── trainer.py                  <- Trainer scripts
+│   └── utils.py                    <- Utility scripts
 │
 ├── main.py                  <- Run training and inference
 ├── requirements.txt         <- File for installing python dependencies
@@ -33,7 +35,5 @@ conda init
 python main.py
 ```
 ## TODO
-- [ ] log
-- [ ] wandb
+- [ ] sweep
 - [ ] features -> config
-- [ ] is_submit -> config
