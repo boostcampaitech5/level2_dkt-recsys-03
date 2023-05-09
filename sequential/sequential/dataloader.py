@@ -170,15 +170,12 @@ class DKTDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         trainset = DKTDataset(self.train_data, self.args)
-        print(">>> >>> trainset: ", len(trainset))
         return DataLoader(trainset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
 
     def val_dataloader(self):
         valset = DKTDataset(self.valid_data, self.args)
-        print(">>> >>> valset: ", len(valset))
         return DataLoader(valset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
 
     def predict_dataloader(self):
         testset = DKTDataset(self.test_data, self.args)
-        print(">>> >>> testset: ", len(testset))
         return DataLoader(testset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)

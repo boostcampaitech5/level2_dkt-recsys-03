@@ -110,7 +110,7 @@ class ModelBase(pl.LightningModule):
         avg_auc = torch.stack([x['val_auc'] for x in self.validation_step_outputs]).mean()
         avg_acc = torch.stack([x['val_acc'] for x in self.validation_step_outputs]).mean()
 
-        logger.info(f"avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
+        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
 
         self.validation_step_outputs.clear()
     

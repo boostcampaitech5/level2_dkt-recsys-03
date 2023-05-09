@@ -25,7 +25,7 @@ def get_logger(logger_conf: dict):
 logging_conf = {  # only used when 'user_wandb==False'
     "version": 1,
     "formatters": {
-        "basic": {"format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"}
+        "basic": {"format": "\n %(asctime)s - %(name)s - %(levelname)s - %(message)s"}
     },
     "handlers": {
         "console": {
