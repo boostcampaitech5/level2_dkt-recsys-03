@@ -5,7 +5,7 @@ defaults:
   - paths: default.yaml
   - wandb: default.yaml
 
-cv_strategy: holdout
+cv_strategy: kfold
 
 seed: 42
 
