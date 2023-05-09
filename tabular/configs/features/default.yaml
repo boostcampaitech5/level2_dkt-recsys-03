@@ -1,0 +1,3 @@
+contain_repeat_cnt: True
+fill_nan: 0
+type: 'second'

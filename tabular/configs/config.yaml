@@ -4,6 +4,7 @@ defaults:
   - model: LGBM.yaml
   - paths: default.yaml
   - wandb: default.yaml
+  - features: default.yaml
 
 cv_strategy: kfold
 
