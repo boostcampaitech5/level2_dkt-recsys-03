@@ -11,12 +11,12 @@ from tabular.trainer import Trainer, CrossValidationTrainer
 @hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
 def main(config: omegaconf.DictConfig=None) -> None:
     # setting
-    print("Setting...")
+    print(f'--------------- Setting ---------------')
     config.timestamp = get_timestamp()
     config.wandb.name = f'work-{get_timestamp()}'
     seed_everything(config.seed)
     
-    # wandb setting
+    # wandb init
     dotenv.load_dotenv()
     WANDB_API_KEY = os.environ.get('WANDB_API_KEY')
     wandb.login(key=WANDB_API_KEY)
@@ -26,7 +26,7 @@ def main(config: omegaconf.DictConfig=None) -> None:
     wandb.save(f"./configs/model/LGBM.yaml")
     
     # setup datamodule
-    print("Setup datamodule...")
+    print(f'--------------- Setup datamodule ---------------')
     datamodule = TabularDataModule(config)
     datamodule.prepare_data()
     datamodule.setup()
@@ -35,20 +35,20 @@ def main(config: omegaconf.DictConfig=None) -> None:
         # trainer
         trainer = Trainer(config, datamodule)
         # train
-        print("Training...")
+        print(f'--------------- Training ---------------')
         trainer.train()
         # inference
-        print("Inference...")
+        print(f'--------------- Inference ---------------')
         trainer.inference()
     
     elif config.cv_strategy == 'kfold':
         # trainer
         trainer = CrossValidationTrainer(config, datamodule)
         # train
-        print("Training...")
+        print(f'--------------- Training ---------------')
         trainer.cv()
         # inference
-        print("Inference...")
+        print(f'--------------- Inference ---------------')
         trainer.oof()
     
     else:
@@ -56,6 +56,7 @@ def main(config: omegaconf.DictConfig=None) -> None:
     
     # wandb finish
     wandb.finish()
+
 
 if __name__ == "__main__":
     main()
