@@ -26,4 +26,4 @@ key
 # output
 /tabular/output
 /tabular/outputs
-wandb
+/tabular/wandb

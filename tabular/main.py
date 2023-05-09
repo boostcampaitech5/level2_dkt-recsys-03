@@ -13,15 +13,14 @@ def main(config: omegaconf.DictConfig=None) -> None:
     # setting
     print("Setting...")
     config.timestamp = get_timestamp()
-    config.name = f'work-{get_timestamp()}'
+    config.wandb.name = f'work-{get_timestamp()}'
     seed_everything(config.seed)
-    print(f"timestamp: {config.timestamp}, seed: {config.seed}")
     
     # wandb setting
     dotenv.load_dotenv()
     WANDB_API_KEY = os.environ.get('WANDB_API_KEY')
     wandb.login(key=WANDB_API_KEY)
-    run = wandb.init(project=config.project, entity=config.entity, name=config.name)
+    run = wandb.init(project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name)
     run.tags = [config.model.name, config.cv_strategy]
     wandb.save(f"./configs/config.yaml")
     wandb.save(f"./configs/model/LGBM.yaml")

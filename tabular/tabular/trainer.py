@@ -127,6 +127,7 @@ class CrossValidationTrainer(Trainer):
         self.test_dataset: TabularDataset = datamodule.test_dataset
         
     def cv(self):
+        cv_score = 0
         for i, (train, valid) in enumerate(zip(self.train_dataset, self.valid_dataset)):
             model = self.get_model()
             model.fit(train.X, train.y)
@@ -140,6 +141,8 @@ class CrossValidationTrainer(Trainer):
             valid_auc = roc_auc_score(valid.y, p_valid)
             valid_acc = accuracy_score(valid.y, p_valid)
 
+            cv_score += valid_auc/5
+
             print(f"fold:{i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
             # wandb logging
@@ -150,6 +153,8 @@ class CrossValidationTrainer(Trainer):
             user_id = self.datamodule.valid_data[i]['userID'].unique()
             result = pd.DataFrame({'userID': user_id, 'prob': pb_valid, 'pred': p_valid, 'true': valid.y})
             self.save_result_csv(result, fold=str(i), type='valid')
+        print(f"cv_score:{cv_score}")
+        wandb.log({"cv score": cv_score})
     
     def oof(self, is_submit: bool = False):
         test = self.test_dataset
@@ -180,4 +185,4 @@ class CrossValidationTrainer(Trainer):
         pb_test = np.mean(pred, axis=0)
         p_test = np.where(pb_test >= 0.5, 1, 0)
         return pb_test, p_test
-      
+     
