@@ -87,9 +87,23 @@ class ModelBase(pl.LightningModule):
         target = batch["correct"]
         loss = self.compute_loss(output, target) # loss
 
-        preds = F.sigmoid(output[:, -1])
-        self.training_step_outputs.append(preds)
+        pred = F.sigmoid(output[:, -1])
+        target = target[:, -1]
+
+        auc, acc = get_metric(targets=target, preds=pred)
+        metrics = {"tr_loss" : loss, "tr_auc" : torch.tensor(auc), "tr_acc" : torch.tensor(acc)}
+        self.training_step_outputs.append(metrics)
+        
         return loss
+
+    def on_train_epoch_end(self):
+        avg_loss = torch.stack([x['tr_loss'] for x in self.training_step_outputs]).mean()
+        avg_auc = torch.stack([x['tr_auc'] for x in self.training_step_outputs]).mean()
+        avg_acc = torch.stack([x['tr_acc'] for x in self.training_step_outputs]).mean()
+
+        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
+
+        self.training_step_outputs.clear()
     
     def validation_step(self, batch, batch_idx):
         output = self(**batch) # predict
