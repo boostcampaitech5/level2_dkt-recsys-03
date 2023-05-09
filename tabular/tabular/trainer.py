@@ -4,34 +4,32 @@ import wandb
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
+from typing import Tuple
+from omegaconf import OmegaConf
 from omegaconf import DictConfig
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import accuracy_score
 from tabular.data import TabularDataModule
 from tabular.data import TabularDataset
+from tabular.metric import get_metric
 
 
 class Trainer:
     def __init__(self, config: DictConfig, datamodule: TabularDataModule):
         self.config = config
-        self.model: Opional[lgb.LGBMClassifier] = None
 
         self.datamodule: TabularDataModule = datamodule
 
         self.train_dataset: TabularDataset = datamodule.train_dataset
         self.valid_dataset: TabularDataset = datamodule.valid_dataset
         self.test_dataset: TabularDataset = datamodule.test_dataset
+    
+    def get_model_txt_path(self, fold="") -> str:
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
+        os.makedirs(directory, exist_ok=True)
+        filename = f"{self.config.timestamp}_{fold}.txt"
+        path = os.path.join(directory, filename)
+        return path
 
-    def get_model(self):
-        name = self.config.model.name
-        params = self.config.model.params
-
-        if name == 'LGBM':
-            return lgb.LGBMClassifier(**params)
-        else:
-            raise NotImplementedError
-
-    def save_model_pkl(self, model, fold=""):
+    def save_model_pkl(self, model, fold="") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{fold}.pkl"
         save_path = os.path.join(directory, filename)
@@ -39,11 +37,9 @@ class Trainer:
         os.makedirs(directory, exist_ok=True)
         with open(save_path, 'wb') as fw:
             pickle.dump(model, fw)
-        
-        # wandb saving
         wandb.save(save_path)
     
-    def load_model_pkl(self, fold=""):
+    def load_model_pkl(self, fold="") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{fold}.pkl"
         load_path = os.path.join(directory, filename)
@@ -52,69 +48,82 @@ class Trainer:
             model = pickle.load(f)
         return model
     
-    def save_result_csv(self, result: pd.DataFrame, fold="", type: str = 'valid'):
+    def get_sample_submission_csv(self) -> pd.DataFrame:
+        directory = self.config.paths.data_dir
+        filename = "sample_submission.csv"
+        path = os.path.join(directory, filename)
+        return pd.read_csv(path)
+    
+    def make_result_df(self, df: pd.DataFrame, prob: np.ndarray, true: pd.Series) -> pd.DataFrame:
+        user_id = df['userID'].unique()
+        result = pd.DataFrame({'userID': user_id, 'prob': prob, 'pred': np.where(prob >= 0.5, 1, 0), 'true': true})
+        return result
+    
+    def save_result_csv(self, result: pd.DataFrame, fold="", type: str = 'valid') -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{type}_{fold}.csv"
         save_path = os.path.join(directory, filename)
 
         os.makedirs(directory, exist_ok=True)
         result.to_csv(save_path, index=False)
-        
-        # wandb saving
         wandb.save(save_path)
 
-    def train(self):
-        model = self.get_model()
+    def train(self) -> None:
         train = self.datamodule.train_dataset
         valid = self.datamodule.valid_dataset
 
-        model.fit(train.X, train.y)
-        self.save_model_pkl(model)
+        if self.config.model.name == 'LGBM':
+            lgb_train = lgb.Dataset(train.X, train.y)
+            lgb_valid = lgb.Dataset(valid.X, valid.y)
 
-        p_train: np.ndarray = model.predict(train.X)
-        p_valid: np.ndarray = model.predict(valid.X)
+            model = lgb.train(
+                params = OmegaConf.to_container(self.config.model.params),
+                train_set = lgb_train,
+                num_boost_round = 20,
+                valid_sets = [lgb_train, lgb_valid],
+                valid_names = ['train', 'valid'],
+                callbacks=[wandb.lightgbm.wandb_callback(), lgb.early_stopping(stopping_rounds=5)]
+            )
 
-        train_auc = roc_auc_score(train.y, p_train)
-        train_acc = accuracy_score(train.y, p_train)
+            save_path = self.get_model_txt_path()
+            model.save_model(save_path, num_iteration=model.best_iteration)
+            wandb.save(save_path)
 
-        valid_auc = roc_auc_score(valid.y, p_valid)
-        valid_acc = accuracy_score(valid.y, p_valid)
+            train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+            valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
 
-        print(f"fold:{i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
+            wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
+
+        train_auc, train_acc = get_metric(train.y, train_prob)
+        valid_auc, valid_acc = get_metric(valid.y, valid_prob)
+        print(f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
         
-        # wandb logging
-        wandb.log({"fold":i, "train auc" : train_auc, "valid auc" : valid_auc, "train acc" : train_acc, "valid acc" : valid_acc})
-
-        pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
-
-        user_id = self.datamodule.valid_data['userID'].unique()
-        result = pd.DataFrame({'userID': user_id, 'prob': pb_valid, 'pred': p_valid, 'true': valid.y})
-        self.save_result_csv(result, 'valid')
-
-    def inference(self, is_submit: bool = False):
+        result = self.make_result_df(self.datamodule.valid_data, valid_prob, valid.y)
+        self.save_result_csv(result, type='valid')
+        
+    def inference(self, is_submit: bool = False) -> None:
         test = self.datamodule.test_dataset
 
-        model = self.load_model_pkl()
-        p_test = model.predict(test.X)
-        pb_test = model.predict_proba(test.X)[:, 1]
+        if self.config.model.name == 'LGBM':
+            load_path = self.get_model_txt_path()
+            model = lgb.Booster(model_file=load_path)
+            
+            test_prob = model.predict(test.X)
         
         if is_submit == True:
-            data_dir = self.config.paths.data_dir
-            submission = pd.read_csv(data_dir+'sample_submission.csv')
-            submission['prediction'] = p_test
-            self.save_result_csv(submission, 'submission')
+            submission = self.get_sample_submission_csv()
+            submission['prediction'] = np.where(test_prob >= 0.5, 1, 0)
+            self.save_result_csv(submission, type='submission')
             
         else:
-            test_auc = roc_auc_score(test.y, p_test)
-            test_acc = accuracy_score(test.y, p_test)
-            print(f"test auc:{test_auc} test acc:{test_acc}")
-            
-            # wandb logging
-            wandb.log({"test auc" : test_auc, "test acc" : test_acc})
+            test_auc, test_acc = get_metric(test.y, test_prob)
 
-            user_id = self.datamoudle.test_data['userID'].unique()
-            result = pd.DataFrame({'userID': user_id, 'prob': pb_test, 'pred': p_test, 'true': test.y})
-            self.save_result_csv(result, 'test')
+            print(f"test auc:{test_auc} test acc:{test_acc}")
+            wandb.run.summary['test_auc'] = test_auc
+            wandb.log({"confusion matrix": wandb.plot.confusion_matrix(y_true=test.y.reset_index(drop=True), preds=np.where(test_prob >= 0.5, 1, 0), class_names=["0", "1"])})
+
+            result = self.make_result_df(self.datamodule.test_data, test_prob, test.y)
+            self.save_result_csv(result, type='test')
 
 
 class CrossValidationTrainer(Trainer):
@@ -126,63 +135,72 @@ class CrossValidationTrainer(Trainer):
         self.valid_datset: List[TabularDataset] = datamodule.valid_dataset
         self.test_dataset: TabularDataset = datamodule.test_dataset
         
-    def cv(self):
+    def cv(self) -> None:
         cv_score = 0
         for i, (train, valid) in enumerate(zip(self.train_dataset, self.valid_dataset)):
-            model = self.get_model()
-            model.fit(train.X, train.y)
-            self.save_model_pkl(model, fold=str(i))
-            p_train: np.ndarray = model.predict(train.X)
-            p_valid: np.ndarray = model.predict(valid.X)
+            if self.config.model.name == 'LGBM':
+                lgb_train = lgb.Dataset(train.X, train.y)
+                lgb_valid = lgb.Dataset(valid.X, valid.y)
+
+                model = lgb.train(
+                    params = OmegaConf.to_container(self.config.model.params),
+                    train_set = lgb_train,
+                    num_boost_round = 20,
+                    valid_sets = [lgb_train, lgb_valid],
+                    valid_names = ['train', 'valid'],
+                    callbacks = [wandb.lightgbm.wandb_callback(), lgb.early_stopping(stopping_rounds=5)]
+                )
+
+                save_path = self.get_model_txt_path(fold=str(i))
+                model.save_model(save_path, num_iteration=model.best_iteration)
+                wandb.save(save_path)
+
+                train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+                valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
         
-            train_auc = roc_auc_score(train.y, p_train)
-            train_acc = accuracy_score(train.y, p_train)
+                train_auc, train_acc = get_metric(train.y, train_prob)
+                valid_auc, valid_acc = get_metric(valid.y, valid_prob)
+                print(f"fold: {i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
-            valid_auc = roc_auc_score(valid.y, p_valid)
-            valid_acc = accuracy_score(valid.y, p_valid)
+                cv_score += valid_auc/5
+            
+            if i == 4:
+                wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
 
-            cv_score += valid_auc/5
-
-            print(f"fold:{i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
-
-            # wandb logging
-            wandb.log({"fold":i, "train auc" : train_auc, "valid auc" : valid_auc, "train acc" : train_acc, "valid acc" : valid_acc})
-
-            pb_valid: np.ndarray = model.predict_proba(valid.X)[:, 1]
-
-            user_id = self.datamodule.valid_data[i]['userID'].unique()
-            result = pd.DataFrame({'userID': user_id, 'prob': pb_valid, 'pred': p_valid, 'true': valid.y})
+            result = self.make_result_df(self.datamodule.valid_data[i], valid_prob, valid.y)
             self.save_result_csv(result, fold=str(i), type='valid')
+        
         print(f"cv_score:{cv_score}")
-        wandb.log({"cv score": cv_score})
+        wandb.run.summary['cv score'] = cv_score
     
-    def oof(self, is_submit: bool = False):
+    def oof(self, is_submit: bool = False) -> None:
         test = self.test_dataset
-        pred = []
+        probs = []
         for i in range(5):
-            model = self.load_model_pkl(fold=str(i))
-            pb_test = model.predict_proba(test.X)[:, 1]
-            pred.append(pb_test)
-        pb_test, p_test = self.soft_voting(np.array(pred))
+            if self.config.model.name == 'LGBM':
+                load_path = self.get_model_txt_path(fold=str(i))
+                model = lgb.Booster(model_file=load_path)
+                
+                test_prob = model.predict(test.X)
+                probs.append(test_prob)
+        test_prob, test_pred = self.soft_voting(np.array(probs))
         
         if is_submit == True:
-            data_dir = self.config.paths.data_dir
-            submission = pd.read_csv(data_dir+'sample_submission.csv')
-            submission['prediction'] = p_test
+            submission = self.get_sample_submission_csv()
+            submission['prediction'] = test_pred
             self.save_result_csv(submission, type='submission')
             
         else:
-            test_auc = roc_auc_score(test.y, p_test)
-            test_acc = accuracy_score(test.y, p_test)
-            print(f"test auc:{test_auc} test acc:{test_acc}")
-            wandb.log({"test auc" : test_auc, "test acc" : test_acc})
+            test_auc, test_acc = get_metric(test.y, test_prob)
 
-            user_id = self.datamodule.test_data['userID'].unique()
-            result = pd.DataFrame({'userID': user_id, 'prob': pb_test, 'pred': p_test, 'true': test.y})
+            print(f"test auc:{test_auc} test acc:{test_acc}")
+            wandb.run.summary['test_auc'] = test_auc
+            wandb.log({"confusion matrix": wandb.plot.confusion_matrix(y_true=test.y.reset_index(drop=True), preds=test_pred, class_names=["0", "1"])})
+
+            result = self.make_result_df(self.datamodule.test_data, test_prob, test.y)
             self.save_result_csv(result, type='test')
 
-    def soft_voting(self, pred: np.ndarray):
-        pb_test = np.mean(pred, axis=0)
-        p_test = np.where(pb_test >= 0.5, 1, 0)
-        return pb_test, p_test
-     
+    def soft_voting(self, probs: np.ndarray) -> Tuple:
+        test_prob = np.mean(probs, axis=0)
+        test_pred = np.where(test_prob >= 0.5, 1, 0)
+        return test_prob, test_pred

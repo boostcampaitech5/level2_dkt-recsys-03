@@ -2,3 +2,6 @@ name: LGBM
 
 params:
   objective: binary
+  metric:
+    - auc
+    - accuracy
