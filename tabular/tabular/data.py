@@ -80,7 +80,7 @@ class TabularDataProcessor:
             self.feature_manager.create_features(df, is_train)
         
         print(f'Loading features Dataframe csv.. is_train : {is_train}')
-        df = self.feature_manager.prepare_df(self.config.features, df, is_train)
+        df = self.feature_manager.prepare_df(self.config.features, self.config.features.features, df, is_train)
         return df
     
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
