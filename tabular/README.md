@@ -41,6 +41,7 @@ wandb sweep {configs/sweep/sweep.yaml}
 wandb agent {entity}/{project}/{sweepid}
 ```
 ```YAML
+# sweep.yaml example
 project: DKT
 entity: recsys01
 program: main.py
