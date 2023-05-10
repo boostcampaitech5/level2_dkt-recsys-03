@@ -6,6 +6,7 @@ from torch.nn import functional as F
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader, random_split
 import pytorch_lightning as pl
+from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
 from .metrics import get_metric
 from .utils import get_logger, logging_conf
@@ -93,7 +94,7 @@ class ModelBase(pl.LightningModule):
         auc, acc = get_metric(targets=target, preds=pred)
         metrics = {"tr_loss" : loss, "tr_auc" : torch.tensor(auc), "tr_acc" : torch.tensor(acc)}
         self.training_step_outputs.append(metrics)
-        
+
         return loss
 
     def on_train_epoch_end(self):
@@ -164,6 +165,113 @@ class LSTM(ModelBase):
                                         mask=mask,
                                         interaction=interaction)
         out, _ = self.lstm(X)
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out).view(batch_size, -1)
+        return out
+
+
+class LSTMATTN(ModelBase):
+    def __init__(
+        self,
+        hidden_dim: int = 64,
+        n_layers: int = 2,
+        n_tests: int = 1538,
+        n_questions: int = 9455,
+        n_tags: int = 913,
+        n_heads: int = 2,
+        drop_out: float = 0.1,
+        **kwargs
+    ):
+        super().__init__(
+            hidden_dim,
+            n_layers,
+            n_tests,
+            n_questions,
+            n_tags
+        )
+        self.n_heads = n_heads
+        self.drop_out = drop_out
+        self.lstm = nn.LSTM(
+            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
+        )
+        self.config = BertConfig(
+            3,  # not used
+            hidden_size=self.hidden_dim,
+            num_hidden_layers=1,
+            num_attention_heads=self.n_heads,
+            intermediate_size=self.hidden_dim,
+            hidden_dropout_prob=self.drop_out,
+            attention_probs_dropout_prob=self.drop_out,
+        )
+        self.attn = BertEncoder(self.config)
+
+    def forward(self, test, question, tag, correct, mask, interaction):
+        X, batch_size = super().forward(test=test,
+                                        question=question,
+                                        tag=tag,
+                                        correct=correct,
+                                        mask=mask,
+                                        interaction=interaction)
+
+        out, _ = self.lstm(X)
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+
+
+        # Adding Attention
+        extended_attention_mask = mask.unsqueeze(1).unsqueeze(2)
+        extended_attention_mask = extended_attention_mask.to(dtype=torch.float32)
+        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        head_mask = [None] * self.n_layers
+
+        encoded_layers = self.attn(out, extended_attention_mask, head_mask=head_mask)
+        sequence_output = encoded_layers[-1]
+
+        out = self.fc(sequence_output).view(batch_size, -1)
+        return out
+
+
+class BERT(ModelBase):
+    def __init__(
+        self,
+        hidden_dim: int = 64,
+        n_layers: int = 2,
+        n_tests: int = 1538,
+        n_questions: int = 9455,
+        n_tags: int = 913,
+        n_heads: int = 2,
+        drop_out: float = 0.1,
+        max_seq_len: float = 20,
+        **kwargs
+    ):
+        super().__init__(
+            hidden_dim,
+            n_layers,
+            n_tests,
+            n_questions,
+            n_tags
+        )
+        self.n_heads = n_heads
+        self.drop_out = drop_out
+        # Bert config
+        self.config = BertConfig(
+            3,  # not used
+            hidden_size=self.hidden_dim,
+            num_hidden_layers=self.n_layers,
+            num_attention_heads=self.n_heads,
+            max_position_embeddings=max_seq_len,
+        )
+        self.encoder = BertModel(self.config)  # Transformer Encoder
+
+    def forward(self, test, question, tag, correct, mask, interaction):
+        X, batch_size = super().forward(test=test,
+                                        question=question,
+                                        tag=tag,
+                                        correct=correct,
+                                        mask=mask,
+                                        interaction=interaction)
+
+        encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)
+        out = encoded_layers[0]
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
         return out
