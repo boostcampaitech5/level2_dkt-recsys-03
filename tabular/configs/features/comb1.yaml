@@ -4,3 +4,7 @@ features:
   - user_acc
   - test_mean
   - tag_mean
+
+contain_repeat_cnt: True
+fill_nan: 0
+type: 'second'
