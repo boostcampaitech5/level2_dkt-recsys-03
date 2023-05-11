@@ -16,27 +16,22 @@ logger = get_logger(logging_conf)
 
 
 class ModelBase(pl.LightningModule):
-    def __init__(self,
-        hidden_dim: int = 64,
-        n_layers: int=2,
-        n_tests: int = 1538,
-        n_questions: int = 9455,
-        n_tags: int = 913
-    ):
+    def __init__(self, config):
         super(ModelBase, self).__init__()
 
-        self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
-        self.n_tests = n_tests
-        self.n_questions = n_questions
-        self.n_tags = n_tags
+        self.config = config
+        self.hidden_dim = self.config.model.hidden_dim
+        self.n_layers = self.config.model.n_layers
+        self.n_tests = self.config.model.n_tests
+        self.n_questions = self.config.model.n_questions
+        self.n_tags = self.config.model.n_tags
 
         # Embedding
-        hd, intd = hidden_dim, hidden_dim // 3
+        hd, intd = self.hidden_dim, self.hidden_dim // 3
         self.embedding_interaction = nn.Embedding(3, intd)
-        self.embedding_test = nn.Embedding(n_tests + 1, intd)
-        self.embedding_question = nn.Embedding(n_questions + 1, intd)
-        self.embedding_tag = nn.Embedding(n_tags + 1, intd)
+        self.embedding_test = nn.Embedding(self.n_tests + 1, intd)
+        self.embedding_question = nn.Embedding(self.n_questions + 1, intd)
+        self.embedding_tag = nn.Embedding(self.n_tags + 1, intd)
 
         # Concat embedding projection
         self.comb_proj = nn.Linear(intd * 4, hd)
@@ -139,25 +134,9 @@ class ModelBase(pl.LightningModule):
 
 
 class LSTM(ModelBase):
-    def __init__(
-        self,
-        hidden_dim: int = 64,
-        n_layers: int = 2,
-        n_tests: int = 1538,
-        n_questions: int = 9455,
-        n_tags: int = 913,
-        **kwargs,
-    ):
-        super().__init__(
-            hidden_dim,
-            n_layers,
-            n_tests,
-            n_questions,
-            n_tags,
-        )
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+    def __init__(self, config):
+        super().__init__(config)
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(test=test,

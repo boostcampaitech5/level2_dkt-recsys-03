@@ -24,7 +24,7 @@ class Trainer:
         # set model
         logger.info("Building Model ...")
         if self.config.model.model_name == "LSTM":
-            self.model = LSTM()
+            self.model = LSTM(config)
             wandb.save(f"./configs/model/LSTM.yaml")
         elif self.config.model.model_name == "LSTMATTN":
             self.model = LSTMATTN()
