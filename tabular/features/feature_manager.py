@@ -84,12 +84,16 @@ class FeatureManager:
     
     
     ####### 피쳐 로딩
-    def prepare_df(self, option: dict, df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
+    def prepare_df(self, option: dict, selected_columns: list[str], df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
         '''피쳐 목록 선택'''
         f_df = self.__load_feature_df(is_train)
         
         for processor in self.feature_processors:
             col = processor.columns()
+            # 선택된 컬럼만 업데이트 함
+            if col not in selected_columns:
+                continue
+            
             opt = processor.options()
             
             if not opt:
