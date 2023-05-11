@@ -6,3 +6,5 @@ scikit-learn
 transformers==4.28.1
 hydra_core==1.3.2
 omegaconf==2.3.0
+wandb==0.15.2
+python_dotenv==1.0.0

@@ -1,5 +1,6 @@
 import os
 import torch
+import wandb
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.nn import functional as F
@@ -102,6 +103,7 @@ class ModelBase(pl.LightningModule):
         avg_acc = torch.stack([x['tr_acc'] for x in self.training_step_outputs]).mean()
 
         logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
+        wandb.log({"tr_loss" : avg_loss, "tr_auc" : torch.tensor(avg_auc), "tr_acc" : torch.tensor(avg_acc)})
 
         self.training_step_outputs.clear()
     
@@ -125,6 +127,7 @@ class ModelBase(pl.LightningModule):
         avg_acc = torch.stack([x['val_acc'] for x in self.validation_step_outputs]).mean()
 
         logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
+        wandb.log({"val_loss" : avg_loss, "val_auc" : torch.tensor(avg_auc), "val_acc" : torch.tensor(avg_acc)})
 
         self.validation_step_outputs.clear()
     

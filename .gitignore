@@ -8,5 +8,9 @@ assets/
 lightning_logs/
 *.csv
 *.log
+*.env
+*.ckpt
 
+wandb/
 outputs/
+DKT_Sequential/

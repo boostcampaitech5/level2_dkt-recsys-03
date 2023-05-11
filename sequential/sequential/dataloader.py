@@ -14,7 +14,6 @@ from sklearn.preprocessing import LabelEncoder
 class DKTDataset(Dataset):
     def __init__(self, data: np.ndarray, config: DictConfig):
         self.data = data
-        # self.max_seq_len = args.max_seq_len
         self.max_seq_len = config.data.max_seq_len
 
     def __getitem__(self, index: int) -> dict:
@@ -94,16 +93,12 @@ class DKTDataModule(pl.LightningDataModule):
             if is_train:
                 a = self.df[col].unique().tolist() + ["unknown"]
                 le.fit(a)  # encode str to int(0~N)
-                # le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
-                # le_path = os.path.join(self.config.paths.asset_path, col + "_classes.npy")
                 np.save(le_path, le.classes_)  # save encoded data
 
                 self.df[col] = self.df[col].astype(str)
                 test = le.transform(self.df[col])
                 self.df[col] = test
             else:
-                # le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
-                # le_path = os.path.join(self.config.paths.asset_path, col + "_classes.npy")
                 le.classes_ = np.load(le_path)
                 self.test_df[col] = self.test_df[col].apply(lambda x: x if str(x) in le.classes_ else "unknown")
 
@@ -133,7 +128,6 @@ class DKTDataModule(pl.LightningDataModule):
     # load and feature_engineering dataset
     def prepare_data(self):
         train_file_path = os.path.join(self.config.paths.data_path, self.config.paths.train_file)
-        # train_file_path = os.path.join(self.args.data_path, self.args.train_file)
         test_file_path = os.path.join(self.config.paths.data_path, self.config.paths.test_file)
 
         self.df = pd.read_csv(train_file_path)

@@ -1,9 +1,11 @@
 import os
+import wandb
 import hydra
 import torch
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import WandbLogger
 from datetime import datetime
 from omegaconf import DictConfig
 
@@ -23,15 +25,19 @@ class Trainer:
         logger.info("Building Model ...")
         if self.config.model.model_name == "LSTM":
             self.model = LSTM()
+            wandb.save(f"./configs/model/LSTM.yaml")
         elif self.config.model.model_name == "LSTMATTN":
             self.model = LSTMATTN()
+            wandb.save(f"./configs/model/LSTMATTN.yaml")
         elif self.config.model.model_name == "BERT":
             self.model = BERT()
+            wandb.save(f"./configs/model/BERT.yaml")
         else:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
     def train(self):
-        trainer = pl.Trainer(max_epochs = self.config.epoch)
+        wandb_logger = WandbLogger(name=self.config.wandb.name, project=self.config.wandb.project)
+        trainer = pl.Trainer(max_epochs = self.config.epoch, logger=wandb_logger)
 
         logger.info("Start Training ...")
         trainer.fit(self.model, datamodule=self.dm)
@@ -53,3 +59,4 @@ class Trainer:
 
         submit_df.to_csv(write_path, index=False)
         print(f"Successfully saved submission as {write_path}")
+        wandb.save(write_path)

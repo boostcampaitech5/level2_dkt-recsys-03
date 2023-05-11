@@ -2,6 +2,7 @@ import os
 import random
 import numpy as np
 import torch
+from datetime import datetime
 
 
 def set_seeds(seed: int = 42):
@@ -12,6 +13,10 @@ def set_seeds(seed: int = 42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+def get_timestamp(date_format: str = '%d_%H%M%S') -> str:
+    timestamp = datetime.now()
+    return timestamp.strftime(date_format)
 
 def get_logger(logger_conf: dict):
     import logging
