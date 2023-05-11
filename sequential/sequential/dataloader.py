@@ -1,18 +1,21 @@
 import os
 import time
-from datetime import datetime
+import torch
 import random
 import numpy as np
 import pandas as pd
-import torch
-from torch.utils.data import DataLoader, Dataset
+from datetime import datetime
 import pytorch_lightning as pl
+
+from torch.utils.data import DataLoader, Dataset
+from omegaconf import DictConfig
 from sklearn.preprocessing import LabelEncoder
 
 class DKTDataset(Dataset):
-    def __init__(self, data: np.ndarray, args):
+    def __init__(self, data: np.ndarray, config: DictConfig):
         self.data = data
-        self.max_seq_len = args.max_seq_len
+        # self.max_seq_len = args.max_seq_len
+        self.max_seq_len = config.data.max_seq_len
 
     def __getitem__(self, index: int) -> dict:
         row = self.data[index]
@@ -55,9 +58,10 @@ class DKTDataset(Dataset):
         return len(self.data)
 
 class DKTDataModule(pl.LightningDataModule):
-    def __init__(self, args):
+    def __init__(self, config: DictConfig):
         super().__init__()
-        self.args = args
+        # self.args = args
+        self.config = config
         self.df = pd.DataFrame()
         self.test_df = pd.DataFrame()
 
@@ -80,23 +84,26 @@ class DKTDataModule(pl.LightningDataModule):
             timestamp = time.mktime(datetime.strptime(s, "%Y-%m-%d %H:%M:%S").timetuple())
             return int(timestamp)
 
-        if not os.path.exists(self.args.asset_path):
-            os.makedirs(self.args.asset_path)
+        if not os.path.exists(self.config.paths.asset_path):
+            os.makedirs(self.config.paths.asset_path)
 
         for col in cate_cols:
             le = LabelEncoder()
+            le_path = os.path.join(self.config.paths.asset_path, col + "_classes.npy")
 
             if is_train:
                 a = self.df[col].unique().tolist() + ["unknown"]
                 le.fit(a)  # encode str to int(0~N)
-                le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
+                # le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
+                # le_path = os.path.join(self.config.paths.asset_path, col + "_classes.npy")
                 np.save(le_path, le.classes_)  # save encoded data
 
                 self.df[col] = self.df[col].astype(str)
                 test = le.transform(self.df[col])
                 self.df[col] = test
             else:
-                le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
+                # le_path = os.path.join(self.args.asset_path, col + "_classes.npy")
+                # le_path = os.path.join(self.config.paths.asset_path, col + "_classes.npy")
                 le.classes_ = np.load(le_path)
                 self.test_df[col] = self.test_df[col].apply(lambda x: x if str(x) in le.classes_ else "unknown")
 
@@ -113,7 +120,8 @@ class DKTDataModule(pl.LightningDataModule):
     # split train data to train & valid : this part will be excahnged
     def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
 
-        seed = self.args.seed
+        # seed = self.args.seed
+        seed = self.config.seed
         if shuffle:
             random.seed(seed)
             random.shuffle(data)
@@ -124,8 +132,9 @@ class DKTDataModule(pl.LightningDataModule):
 
     # load and feature_engineering dataset
     def prepare_data(self):
-        train_file_path = os.path.join(self.args.data_path, self.args.train_file)
-        test_file_path = os.path.join(self.args.data_path, self.args.test_file)
+        train_file_path = os.path.join(self.config.paths.data_path, self.config.paths.train_file)
+        # train_file_path = os.path.join(self.args.data_path, self.args.train_file)
+        test_file_path = os.path.join(self.config.paths.data_path, self.config.paths.test_file)
 
         self.df = pd.read_csv(train_file_path)
         self.test_df = pd.read_csv(test_file_path)
@@ -138,9 +147,9 @@ class DKTDataModule(pl.LightningDataModule):
         if stage == "predict" or stage is None:
             self.__preprocessing(is_train=False)
         
-        self.args.n_questions = len(np.load(os.path.join(self.args.asset_path, "assessmentItemID_classes.npy")))
-        self.args.n_tests = len(np.load(os.path.join(self.args.asset_path, "testId_classes.npy")))
-        self.args.n_tags = len(np.load(os.path.join(self.args.asset_path, "KnowledgeTag_classes.npy")))
+        self.n_questions = len(np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy")))
+        self.n_tests = len(np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy")))
+        self.n_tags = len(np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy")))
 
         columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
 
@@ -169,13 +178,13 @@ class DKTDataModule(pl.LightningDataModule):
             self.test_data = group.values
 
     def train_dataloader(self):
-        trainset = DKTDataset(self.train_data, self.args)
-        return DataLoader(trainset, batch_size=self.args.batch_size, shuffle=True, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
+        trainset = DKTDataset(self.train_data, self.config)
+        return DataLoader(trainset, batch_size=self.config.data.batch_size, shuffle=True, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
 
     def val_dataloader(self):
-        valset = DKTDataset(self.valid_data, self.args)
-        return DataLoader(valset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
+        valset = DKTDataset(self.valid_data, self.config)
+        return DataLoader(valset, batch_size=self.config.data.batch_size, shuffle=False, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
 
     def predict_dataloader(self):
-        testset = DKTDataset(self.test_data, self.args)
-        return DataLoader(testset, batch_size=self.args.batch_size, shuffle=False, num_workers=self.args.num_workers, pin_memory=self.pin_memory)
+        testset = DKTDataset(self.test_data, self.config)
+        return DataLoader(testset, batch_size=self.config.data.batch_size, shuffle=False, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)

@@ -8,3 +8,5 @@ assets/
 lightning_logs/
 *.csv
 *.log
+
+outputs/
