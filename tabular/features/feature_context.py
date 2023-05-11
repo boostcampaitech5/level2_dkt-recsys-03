@@ -4,6 +4,7 @@ from features.tags import TagExposureCnt
 from features.tests import TestNum, TestType
 from features.timestamps import Month, Hour, DayOfWeek
 from features.solving_time import SolvingTime
+from features.matrix_factorization import AssessmentLatentFactor
 
 
 def feature_manager(csv_path: str) -> FeatureManager:
@@ -21,7 +22,8 @@ def feature_manager(csv_path: str) -> FeatureManager:
         Hour(),
         DayOfWeek(),
         
-        SolvingTime()
+        SolvingTime(),
+        AssessmentLatentFactor()
     ])
     
     
