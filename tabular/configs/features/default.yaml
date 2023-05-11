@@ -1,0 +1,23 @@
+features:
+  - KnowledgeTag
+  - user_correct_answer
+  - user_total_answer
+  - user_acc
+  - test_mean
+  - test_sum
+  - tag_mean
+  - tag_sum
+  - assessmentNum
+  - userSolvedCnt
+  - repeatCnt
+  - tagExposureCnt
+  - testNum
+  - testType
+  - month
+  - hour
+  - dayOfWeek
+  - solvingTime
+
+contain_repeat_cnt: True
+fill_nan: 0
+type: 'second'
