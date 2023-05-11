@@ -11,15 +11,10 @@ class AssessmentLatentFactor(PreProcessor):
     def columns(self) -> list[str]:
         return ['userLatentFactor1', 'userLatentFactor2', 'userLatentFactor3', 'assessmentLatentFactor1', 'assessmentLatentFactor2', 'assessmentLatentFactor3']
     
-    def options(self) -> dict:
-        return {
-            'factor_value': ['answerCode', '']
-        }
-    
-    def create_feature(self, df: pd.DataFrame, factor_value: str, **kwargs: dict) -> list[pd.Series]:
-        avg_answer_code = df.groupby(['userID', 'assessmentItemID'])[factor_value].mean().reset_index()
+    def create_feature(self, df: pd.DataFrame, **kwargs: dict) -> list[pd.Series]:
+        avg_answer_code = df.groupby(['userID', 'assessmentItemID'])['answerCode'].mean().reset_index()
         
-        pivot_df = avg_answer_code.pivot(index='userID', columns='assessmentItemID', values=factor_value).fillna(0)
+        pivot_df = avg_answer_code.pivot(index='userID', columns='assessmentItemID', values='answerCode').fillna(0)
         
         nmf = NMF(n_components=self.n_components)
         
