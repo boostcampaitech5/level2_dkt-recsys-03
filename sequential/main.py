@@ -24,9 +24,6 @@ def main(config: DictConfig = None) -> None:
     logger.info("Preparing data ...")
     dm = DKTDataModule(config)
 
-    logger.info("Building Model ...")
-    model = LSTM()
-
     if config.cv_strategy == "holdout":
         trainer = Trainer(config, dm)
         trainer.train()
