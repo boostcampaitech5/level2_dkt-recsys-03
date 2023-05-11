@@ -98,7 +98,7 @@ class ModelBase(pl.LightningModule):
         avg_acc = torch.stack([x['tr_acc'] for x in self.training_step_outputs]).mean()
 
         logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"tr_loss" : avg_loss, "tr_auc" : torch.tensor(avg_auc), "tr_acc" : torch.tensor(avg_acc)})
+        wandb.log({"tr_loss" : avg_loss, "tr_auc" : avg_auc, "tr_acc" : avg_acc})
 
         self.training_step_outputs.clear()
     
@@ -122,7 +122,7 @@ class ModelBase(pl.LightningModule):
         avg_acc = torch.stack([x['val_acc'] for x in self.validation_step_outputs]).mean()
 
         logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"val_loss" : avg_loss, "val_auc" : torch.tensor(avg_auc), "val_acc" : torch.tensor(avg_acc)})
+        wandb.log({"val_loss" : avg_loss, "val_auc" : avg_auc, "val_acc" : avg_acc})
 
         self.validation_step_outputs.clear()
     
@@ -152,29 +152,11 @@ class LSTM(ModelBase):
 
 
 class LSTMATTN(ModelBase):
-    def __init__(
-        self,
-        hidden_dim: int = 64,
-        n_layers: int = 2,
-        n_tests: int = 1538,
-        n_questions: int = 9455,
-        n_tags: int = 913,
-        n_heads: int = 2,
-        drop_out: float = 0.1,
-        **kwargs
-    ):
-        super().__init__(
-            hidden_dim,
-            n_layers,
-            n_tests,
-            n_questions,
-            n_tags
-        )
-        self.n_heads = n_heads
-        self.drop_out = drop_out
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+    def __init__(self,config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
         self.config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
@@ -212,34 +194,18 @@ class LSTMATTN(ModelBase):
 
 
 class BERT(ModelBase):
-    def __init__(
-        self,
-        hidden_dim: int = 64,
-        n_layers: int = 2,
-        n_tests: int = 1538,
-        n_questions: int = 9455,
-        n_tags: int = 913,
-        n_heads: int = 2,
-        drop_out: float = 0.1,
-        max_seq_len: float = 20,
-        **kwargs
-    ):
-        super().__init__(
-            hidden_dim,
-            n_layers,
-            n_tests,
-            n_questions,
-            n_tags
-        )
-        self.n_heads = n_heads
-        self.drop_out = drop_out
+    def __init__(self,config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.max_seq_len = self.config.data.max_seq_len
         # Bert config
         self.config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
             num_hidden_layers=self.n_layers,
             num_attention_heads=self.n_heads,
-            max_position_embeddings=max_seq_len,
+            max_position_embeddings=self.max_seq_len,
         )
         self.encoder = BertModel(self.config)  # Transformer Encoder
 

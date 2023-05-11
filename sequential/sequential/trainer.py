@@ -27,10 +27,10 @@ class Trainer:
             self.model = LSTM(config)
             wandb.save(f"./configs/model/LSTM.yaml")
         elif self.config.model.model_name == "LSTMATTN":
-            self.model = LSTMATTN()
+            self.model = LSTMATTN(config)
             wandb.save(f"./configs/model/LSTMATTN.yaml")
         elif self.config.model.model_name == "BERT":
-            self.model = BERT()
+            self.model = BERT(config)
             wandb.save(f"./configs/model/BERT.yaml")
         else:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
