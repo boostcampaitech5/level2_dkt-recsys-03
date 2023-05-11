@@ -1,7 +1,9 @@
 cv_strategy: holdout
 seed: 42
+epoch: 10
 
 defaults:
   - _self_
   - paths: default.yaml
   - data: default.yaml
+  - model: LSTM.yaml

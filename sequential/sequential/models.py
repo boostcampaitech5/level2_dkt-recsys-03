@@ -1,11 +1,10 @@
 import os
 import torch
 import torch.nn as nn
+import pytorch_lightning as pl
 from torch.nn import functional as F
-
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader, random_split
-import pytorch_lightning as pl
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
 from .metrics import get_metric
