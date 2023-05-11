@@ -1,6 +1,6 @@
 import pandas as pd
 from itertools import product
-from typing import List
+from typing import List, Union
 from features.preprocessor import PreProcessor
 from os import path
 
@@ -52,6 +52,30 @@ class FeatureManager:
             col = processor.columns()
             opt = processor.options()
             
+            ### 여러개의 컬럼을 만드는 경우
+            if type(col) is list:
+                cols = col
+                
+                ### 옵션이 없는 경우
+                if not opt:
+                    series_list = processor.create_feature(df)
+                    for i, series in enumerate(series_list):
+                        df.loc[:, cols[i]] = series
+                    continue
+                
+                ### 옵션이 있는 경우, 컬럼#인자 로 저장
+                keys = list(opt.keys())
+                values_by_key = list(opt.values())
+                for args in product(*values_by_key):
+                    kwargs = {key: values for key, values in zip(keys, args)}
+                    series_list = processor.create_feature(df, **kwargs)
+                    
+                    for i, series in enumerate(series_list):
+                        col_ = self.__col_opt(cols[i], args)
+                        df.loc[:, col_] = series
+                
+                continue
+            
             ### 옵션이 없는 경우
             if not opt:
                 df.loc[:, col] = processor.create_feature(df)
@@ -84,12 +108,41 @@ class FeatureManager:
     
     
     ####### 피쳐 로딩
-    def prepare_df(self, option: dict, df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
+    def prepare_df(self, option: dict, selected_columns: list[str], df: pd.DataFrame, is_train: bool = True) -> pd.DataFrame:
         '''피쳐 목록 선택'''
         f_df = self.__load_feature_df(is_train)
         
         for processor in self.feature_processors:
             col = processor.columns()
+            
+            if type(col) == list:
+                cols = col
+                
+                opt = processor.options()
+            
+                if not opt:
+                    for col_ in cols:
+                        if col_ not in selected_columns:
+                            continue
+                        df.loc[:, col_] = f_df[col_]
+                    continue
+                
+                arg_keys = list(processor.options().keys())
+                arg_vals = [option[arg_key] for arg_key in arg_keys]
+                
+                for col_ in cols:
+                    if col_ not in selected_columns:
+                        continue
+                    
+                    col__ = self.__col_opt(col_, arg_vals)
+                    df.loc[:, col_] = f_df[col__]
+                
+                continue
+            
+            # 선택된 컬럼만 업데이트 함
+            if col not in selected_columns:
+                continue
+            
             opt = processor.options()
             
             if not opt:
