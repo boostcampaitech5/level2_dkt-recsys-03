@@ -6,8 +6,6 @@ from datetime import datetime
 from dataloader import GraphDataModule
 
 
-
-
 def main():
     datamodule = GraphDataModule()
     model = LightGCNNet()
@@ -26,7 +24,6 @@ def main():
 
     submission.to_csv(write_path, index=False)
     print(f"Successfully saved submission as {write_path}")
-
 
 if __name__ == "__main__":
     main()
