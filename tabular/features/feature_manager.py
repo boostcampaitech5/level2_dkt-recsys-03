@@ -31,11 +31,11 @@ class FeatureManager:
             return True
         
         #### feature_processors로 해시 값을 구한뒤, 이 값으로 업데이트 여부를 판단
-        curr_process_col_v = str(self.feature_columns())
+        update_chk_val = self.__update_check_val()
         with open(f'{csv_path_}.chk', 'r') as chk_f:
             col_v = chk_f.readline().rstrip()
             
-            if col_v != curr_process_col_v:
+            if col_v != update_chk_val:
                 return True
             
         return False
@@ -103,8 +103,8 @@ class FeatureManager:
         df.to_csv(csv_path_)
         
         with open(f'{csv_path_}.chk', 'w') as chk_f:
-            curr_process_col_v = str(self.feature_columns())
-            chk_f.write(curr_process_col_v)
+            update_chk_val = self.__update_check_val()
+            chk_f.write(update_chk_val)
     
     
     ####### 피쳐 로딩
@@ -160,6 +160,14 @@ class FeatureManager:
     
     def feature_columns(self) -> list[str]:
         return [p.columns() for p in self.feature_processors]
+    
+    
+    def __update_check_val(self) -> str:
+        '''업데이트 확인용 값을 반환합니다.
+        - 이 값은 options이나 feature_processor의 columns에 영향을 받습니다.
+        '''
+        update_chk_val = str([str(p.columns()) + ':' + str(p.options()) for p in self.feature_processors])
+        return update_chk_val
     
     
     def __load_feature_df(self, is_train: bool = True) -> pd.DataFrame:
