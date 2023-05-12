@@ -1,10 +1,12 @@
 # spercify here default configurations
 defaults:
   - _self_
+  - features: default.yaml
   - model: LGBM.yaml
   - paths: default.yaml
+  - wandb: default.yaml
 
-cv_strategy: holdout
+cv_strategy: kfold
 
 seed: 42
 

@@ -6,13 +6,16 @@
 ├── configs                   <- Hydra configs
 │   ├── model                    <- Model configs
 │   ├── paths                    <- Project paths configs
+│   ├── wandb                    <- W&B configs
+│   ├── sweep                    <- Sweep configs
 │   │
-│   └──config.yaml           <- Main config
+│   └──config.yaml               <- Main config
 │
 ├── tabular                    <- Source code
-│   ├── data                     <- Data scripts
-│   ├── models                   <- Model scripts
-│   └── utils                    <- Utility scripts
+│   ├── data.py                     <- Data scripts
+│   ├── metric.py                   <- Metric scripts
+│   ├── trainer.py                  <- Trainer scripts
+│   └── utils.py                    <- Utility scripts
 │
 ├── main.py                  <- Run training and inference
 ├── requirements.txt         <- File for installing python dependencies
@@ -31,4 +34,28 @@ conda init
 
 ```bash
 python main.py
+```
+## Sweep
+```bash
+wandb sweep {configs/sweep/sweep.yaml}
+wandb agent {entity}/{project}/{sweepid}
+```
+```YAML
+# sweep.yaml example
+project: DKT
+entity: recsys01
+program: main.py
+method: grid
+metric:
+  goal: maximize
+  name: cv_score
+parameters:
+  features:
+    values: [default, comb1]
+
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args_no_hyphens}
 ```
