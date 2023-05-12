@@ -32,8 +32,6 @@ class GraphDataModule(L.LightningDataModule):
         self.id2index:dict = indexing_data(self.data)
         self.data = process_data(data=self.data, id2index=self.id2index)
 
-            
-
     # train vs test split
     def setup(self, stage):
         print("+++++++setting up data++++++++")
