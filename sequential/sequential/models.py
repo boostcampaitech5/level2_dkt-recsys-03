@@ -4,12 +4,13 @@ import wandb
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.nn import functional as F
-from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader, random_split
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
 from .metrics import get_metric
 from .utils import get_logger, logging_conf
+from .scheduler import get_scheduler
+from .optimizer import get_optimizer
 
 
 logger = get_logger(logging_conf)
@@ -74,10 +75,14 @@ class ModelBase(pl.LightningModule):
 
     # Set optimizer, scheduler
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        scheduler = StepLR(optimizer, step_size=1)
-        return [optimizer], [scheduler]
-    
+        optimizer = get_optimizer(param=self.parameters(), config=self.config)
+        scheduler = get_scheduler(optimizer=optimizer, config=self.config)
+
+        if self.config.trainer.scheduler == "plateau":
+            return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "monitor": "val_auc", "name": "seq_lr_scheduler"}]
+        else:
+            return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "name": "seq_lr_scheduler"}]
+    추
     def training_step(self, batch, batch_idx):
         output = self(**batch) # predict
         target = batch["correct"]
@@ -124,6 +129,7 @@ class ModelBase(pl.LightningModule):
         logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss" : avg_loss, "val_auc" : avg_auc, "val_acc" : avg_acc})
 
+        self.log("val_auc", avg_auc)
         self.validation_step_outputs.clear()
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):

@@ -1,11 +1,10 @@
-cv_strategy: holdout
 seed: 42
-epoch: 10
 timestamp: 
 
 defaults:
   - _self_
   - paths: default.yaml
   - data: default.yaml
+  - trainer: default.yaml
   - wandb: default.yaml
   - model: LSTM.yaml
