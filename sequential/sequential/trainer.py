@@ -93,24 +93,23 @@ class KfoldTrainer(Trainer):
             print(f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------")
 
             # create model for cv
-            self.model = self.load_model()
-
+            self.fold_model = self.load_model()
             # set data for training and validation in fold
-            self.trainer = pl.Trainer(max_epochs = self.config.trainer.epoch)
+            self.fold_trainer = pl.Trainer(max_epochs = self.config.trainer.epoch)
 
-            self.dm = DKTDataKFoldModule(self.config)
-            self.dm.train_data = tr_dataset[tra_idx]
-            self.dm.valid_data = tr_dataset[val_idx]
-            self.dm.test_data = test_dataset
+            self.fold_dm = DKTDataKFoldModule(self.config)
+            self.fold_dm.train_data = tr_dataset[tra_idx]
+            self.fold_dm.valid_data = tr_dataset[val_idx]
+            self.fold_dm.test_data = test_dataset
             
             # train n validation
-            self.trainer.fit(self.model, datamodule=self.dm)
+            self.fold_trainer.fit(self.fold_model, datamodule=self.fold_dm)
 
-            print("check tr_result, val_result: ", len(self.model.tr_result), len(self.model.val_result))
-            tr_auc = torch.stack([x['tr_avg_auc'] for x in self.model.tr_result]).mean()
-            tr_acc = torch.stack([x['tr_avg_acc'] for x in self.model.tr_result]).mean()
-            val_auc = torch.stack([x['val_avg_auc'] for x in self.model.val_result]).mean()
-            val_acc = torch.stack([x['val_avg_acc'] for x in self.model.val_result]).mean()
+            print("check tr_result, val_result: ", len(self.fold_model.tr_result), len(self.fold_model.val_result))
+            tr_auc = torch.stack([x['tr_avg_auc'] for x in self.fold_model.tr_result]).mean()
+            tr_acc = torch.stack([x['tr_avg_acc'] for x in self.fold_model.tr_result]).mean()
+            val_auc = torch.stack([x['val_avg_auc'] for x in self.fold_model.val_result]).mean()
+            val_acc = torch.stack([x['val_avg_acc'] for x in self.fold_model.val_result]).mean()
 
             print(f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}")
             self.cv_score += (val_auc / self.config.trainer.k)
@@ -122,7 +121,7 @@ class KfoldTrainer(Trainer):
 
     def cv_predict(self):
         logger.info("Making Prediction ...")
-        predictions = self.trainer.predict(self.model, datamodule=self.dm)
+        predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.fold_dm)
 
         logger.info("Saving Submission ...")
         predictions = np.concatenate(predictions)
@@ -153,7 +152,7 @@ class KfoldTrainer(Trainer):
             df_list.append(df['prediction'])
         
         # soft voting
-        test_prob, test_pred = self.soft_voting(self, df_list)
+        test_prob, test_pred = self.soft_voting(df_list)
         submit_df['prediction'] = pd.DataFrame(test_prob)
 
         # file saving
