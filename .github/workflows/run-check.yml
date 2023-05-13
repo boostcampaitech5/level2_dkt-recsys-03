@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@2
+    - uses: actions/checkout@v3
     - name: move to sequential project dir
       run: cd sequential
     - name: setup python
-      uses: actions/python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.10
     - name: install dependencies
@@ -27,11 +27,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@2
+    - uses: actions/checkout@v3
     - name: move to tabular project dir
       run: cd tabular
     - name: setup python
-      uses: actions/python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.10
     - name: install dependencies
