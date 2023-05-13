@@ -1,5 +1,6 @@
 import lightning as L
 import torch
+from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Dataset
 from .preprocess import load_data, indexing_data, process_data
 
@@ -18,16 +19,16 @@ class GraphDataset(Dataset):
         return len(self.label_list)
 
 class GraphDataModule(L.LightningDataModule):
-    def __init__(self):
+    def __init__(self, config: DictConfig):
         super().__init__()
-        self.data_dir = "/opt/ml/input/data"
+        self.config = config
         self.train_data = None
         self.test_data = None
         
     def prepare_data(self):
         print("+++++++preparing data++++++++")
         # 데이터를 부르고 train&test concat하고 중복 처리
-        self.data = load_data(self.data_dir)
+        self.data = load_data(self.config.paths.data_path)
         # len을 구해 노드의 개수로 활용
         self.id2index:dict = indexing_data(self.data)
         self.data = process_data(data=self.data, id2index=self.id2index)
@@ -53,9 +54,15 @@ class GraphDataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         trainset = GraphDataset(self.train_data)
-        return DataLoader(trainset,num_workers = 4, batch_size=2475962)
+        train_loader = DataLoader(trainset, 
+                            num_workers = self.config.data.num_workers, 
+                            batch_size=self.config.data.train_batch_size)
+        return train_loader
         
     def predict_dataloader(self):
         testset = GraphDataset(self.test_data)
-        return DataLoader(testset, num_workers = 4, batch_size = 744)
+        pred_loader = DataLoader(testset, 
+                            num_workers = self.config.data.num_workers, 
+                            batch_size = self.config.data.test_batch_size)
+        return pred_loader
 

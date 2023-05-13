@@ -1,12 +1,12 @@
-from features.preprocessor import PreProcessor
 import pandas as pd
+from features.feature_processor import FeatureProcessor
 
 
-class SolvingTime(PreProcessor):
+class SolvingTime(FeatureProcessor):
     '''문제 풀이시간'''
     
     def columns(self) -> str:
-        return 'solvingTime'
+        return 'solving_time'
     
     
     def options(self) -> dict:
@@ -23,8 +23,8 @@ class SolvingTime(PreProcessor):
                        **kwargs: dict) -> pd.Series:
         ### get diff
         if contain_repeat_cnt:
-            selected = df[['Timestamp','userID','testId','repeatCnt']]
-            diff = selected.groupby(['userID','testId','repeatCnt']).diff()
+            selected = df[['Timestamp','userID','testId','repeat_cnt']]
+            diff = selected.groupby(['userID','testId','repeat_cnt']).diff()
         else:
             selected = df[['Timestamp','userID','testId']]
             diff = selected.groupby(['userID','testId']).diff()

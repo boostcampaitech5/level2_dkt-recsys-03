@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Union
 
 
-class PreProcessor():
+class FeatureProcessor():
     '''Feature processor'''
     
     def create_feature(self, df: pd.DataFrame, **kwargs: dict) -> Union[pd.Series, list[pd.Series]]:

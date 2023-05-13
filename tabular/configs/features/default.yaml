@@ -1,28 +1,29 @@
 features:
+# original
   - KnowledgeTag
-  - user_correct_answer
-  - user_total_answer
+# memory.py
   - user_acc
-  - test_mean
-  - test_sum
-  - tag_mean
-  - tag_sum
-  - assessmentNum
-  - userSolvedCnt
-  - repeatCnt
-  - tagExposureCnt
-  - testNum
-  - testType
+  - user_item_acc
+  - user_tag1_acc
+  - user_tag2_acc
+  - user_last_tag1_correct
+  - user_last_tag2_correct
+# solving_time.py
+  - solving_time
+# assessments.py
+  - assessment_num
+  - user_solved_cnt
+  - repeat_cnt
+# tags.py
+  - tag_exposure_cnt
+# tests.py
+  - test_type
+  - test_num
+# timepstamps.py
+  - day_of_week
   - month
   - hour
-  - dayOfWeek
-  - solvingTime
-  - userLatentFactor1
-  - userLatentFactor2
-  - userLatentFactor3
-  - assessmentLatentFactor1
-  - assessmentLatentFactor2
-  - assessmentLatentFactor3
+
 
 contain_repeat_cnt: True
 fill_nan: 0

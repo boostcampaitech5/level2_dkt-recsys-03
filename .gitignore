@@ -17,11 +17,12 @@ ipython_config.py
 
 
 # logs
-DKT_Sequential/
-lightning_logs/
 *.log
 log
 *.ckpt
+DKT_Sequential/
+graph/lightning_logs/
+sequential/lightning_logs/
 
 
 # MacOS
@@ -37,12 +38,18 @@ key
 
 
 # output
+/graph/outputs
+/graph/wandb
 /tabular/output
 /tabular/outputs
 /tabular/wandb
 /sequential/outputs
 /sequential/output
 /sequential/wandb
+
+
+#vscode
+/.vscode
 
 
 # Dataset
