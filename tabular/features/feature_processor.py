@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-class PreProcessor():
+class FeatureProcessor():
     '''Feature processor'''
     
     def create_feature(self, df: pd.DataFrame, **kwargs: dict) -> pd.Series:

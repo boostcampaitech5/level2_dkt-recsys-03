@@ -28,3 +28,6 @@ key
 /tabular/output
 /tabular/outputs
 /tabular/wandb
+
+# vscode
+/.vscode

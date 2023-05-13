@@ -32,8 +32,8 @@ class TabularDataModule:
         test_data: pd.DataFrame = self.load_csv_file(self.test_data_path)
         # data preprocessing
         self.processor = TabularDataProcessor(self.config, self.feature_manager)
-        self.train_data = self.processor.preprocessing(train_data, is_train=True)
-        self.test_data = self.processor.preprocessing(test_data, is_train=False)
+        self.train_data = self.processor.preprocessing(train_data)
+        self.test_data = self.processor.preprocessing(test_data)
 
     def setup(self):
         # split data based on validation startegy
@@ -41,15 +41,15 @@ class TabularDataModule:
         train_data, valid_data = splitter.split_data(self.train_data)
         # feature engineering
         if self.cv_strategy == 'holdout':
-            self.train_data = self.processor.feature_engineering(train_data)
-            self.valid_data = self.processor.feature_engineering(valid_data)
+            self.train_data = self.processor.feature_engineering(train_data, type='train')
+            self.valid_data = self.processor.feature_engineering(valid_data, type='valid')
 
             self.train_dataset = TabularDataset(self.config, self.train_data)
             self.valid_dataset = TabularDataset(self.config, self.valid_data, is_train=False)
 
         elif self.cv_strategy == 'kfold':
-            self.train_data = [self.processor.feature_engineering(df) for df in train_data]
-            self.valid_data = [self.processor.feature_engineering(df) for df in valid_data]
+            self.train_data = [self.processor.feature_engineering(df, type='train', fold=str(i)) for i, df in enumerate(train_data)]
+            self.valid_data = [self.processor.feature_engineering(df, type='valid', fold=str(i)) for i, df in enumerate(valid_data)]
 
             self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
             self.valid_dataset = [TabularDataset(self.config, df, is_train=False) for df in self.valid_data]
@@ -57,7 +57,7 @@ class TabularDataModule:
         else:
             raise NotImplementedError
 
-        self.test_data = self.processor.feature_engineering(self.test_data)
+        self.test_data = self.processor.feature_engineering(self.test_data, type='test')
         self.test_dataset = TabularDataset(self.config, self.test_data, is_train=False)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
@@ -74,31 +74,22 @@ class TabularDataProcessor:
         self.config = config
         self.feature_manager = fm
         
-    def preprocessing(self, df: pd.DataFrame, is_train=True) -> pd.DataFrame:
-        if self.feature_manager.need_feature_creation(is_train):
-            print(f'Saving features Dataframe csv.. is_train : {is_train}')
-            self.feature_manager.create_features(df, is_train)
-        
-        print(f'Loading features Dataframe csv.. is_train : {is_train}')
-        df = self.feature_manager.prepare_df(self.config.features, self.config.features.features, df, is_train)
+    def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
+        """ 
+        전처리
+        - userID, Timestamp 기준 오름차순 정렬
+        """
+        df.sort_values(by=['userID', 'Timestamp'], inplace=True)
         return df
     
-    def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
-        df.sort_values(by=['userID', 'Timestamp'], inplace=True)
-        # userID별 문제 풀이 수
-        df['user_total_answer'] = df.groupby('userID')['answerCode'].cumcount()
-        # userID별 정답 수
-        df['user_correct_answer'] = df.groupby('userID')['answerCode'].transform(lambda x: x.cumsum().shift(1))
-        # userID별 정답률
-        df['user_acc'] = df['user_correct_answer']/df['user_total_answer']
-        # testId별 정답률
-        correct_t = df.groupby(['testId'])['answerCode'].agg(['mean', 'sum'])
-        correct_t.columns = ["test_mean", 'test_sum']
-        df = pd.merge(df, correct_t, on=['testId'], how="left")
-        # KnowledgeTag별 정답률
-        correct_k = df.groupby(['KnowledgeTag'])['answerCode'].agg(['mean', 'sum'])
-        correct_k.columns = ["tag_mean", 'tag_sum']
-        df = pd.merge(df, correct_k, on=['KnowledgeTag'], how="left")
+    def feature_engineering(self, df: pd.DataFrame, type: str = 'train', fold: str = "") -> pd.DataFrame:
+
+        if self.feature_manager.need_feature_creation(type=type, fold=fold):
+            print(f"Saving features Dataframe csv.. --type {type} --fold {fold}")
+            self.feature_manager.create_features(df, type=type, fold=fold)
+        
+        print(f"Loading features Dataframe csv.. --type {type} --fold {fold}")
+        df = self.feature_manager.prepare_df(self.config.features, self.config.features.features, df, type=type, fold=fold)
         return df
 
 
