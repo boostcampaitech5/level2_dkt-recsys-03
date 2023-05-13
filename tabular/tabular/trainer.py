@@ -4,7 +4,7 @@ import wandb
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
-from typing import Tuple, List
+from typing import List, Tuple
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from tabular.data import TabularDataModule
