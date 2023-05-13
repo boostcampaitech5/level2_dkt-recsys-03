@@ -1,7 +1,7 @@
 import lightning as L
 import torch
 from torch.utils.data import DataLoader, Dataset
-from preprocess import *
+from .preprocess import *
 
 
 class GraphDataset(Dataset):

@@ -1,7 +1,7 @@
 import lightning as L
 import torch
 from torch_geometric.nn.models import LightGCN
-from preprocess import *
+from .preprocess import *
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 
