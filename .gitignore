@@ -18,7 +18,6 @@ ipython_config.py
 
 # logs
 DKT_Sequential/
-wandb/
 lightning_logs/
 *.log
 log
@@ -41,9 +40,9 @@ key
 /tabular/output
 /tabular/outputs
 /tabular/wandb
-/sequential/outputs/
-/sequential/output/
-/sequential/wandb/
+/sequential/outputs
+/sequential/output
+/sequential/wandb
 
 
 # Dataset
