@@ -23,14 +23,7 @@ features:
   - day_of_week
   - month
   - hour
-  - dayOfWeek
-# matrix_factorization.py
-  - userLatentFactor1
-  - userLatentFactor2
-  - userLatentFactor3
-  - assessmentLatentFactor1
-  - assessmentLatentFactor2
-  - assessmentLatentFactor3
+
 
 contain_repeat_cnt: True
 fill_nan: 0
