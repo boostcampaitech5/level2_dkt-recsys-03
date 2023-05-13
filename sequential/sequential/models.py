@@ -82,7 +82,7 @@ class ModelBase(pl.LightningModule):
             return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "monitor": "val_auc", "name": "seq_lr_scheduler"}]
         else:
             return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "name": "seq_lr_scheduler"}]
-    추
+    
     def training_step(self, batch, batch_idx):
         output = self(**batch) # predict
         target = batch["correct"]
