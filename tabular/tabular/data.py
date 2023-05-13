@@ -1,7 +1,7 @@
 import os
 import random
 import pandas as pd
-from typing import Dict, List, Union, Optional
+from typing import List, Union, Optional
 from omegaconf import DictConfig
 from sklearn.model_selection import GroupKFold
 from features.feature_context import feature_manager
@@ -41,15 +41,15 @@ class TabularDataModule:
         train_data, valid_data = splitter.split_data(self.train_data)
         # feature engineering
         if self.cv_strategy == 'holdout':
-            self.train_data = self.processor.feature_engineering(train_data, type='train')
-            self.valid_data = self.processor.feature_engineering(valid_data, type='valid')
+            self.train_data = self.processor.feature_engineering(train_data, subset='train')
+            self.valid_data = self.processor.feature_engineering(valid_data, subset='valid')
 
             self.train_dataset = TabularDataset(self.config, self.train_data)
             self.valid_dataset = TabularDataset(self.config, self.valid_data, is_train=False)
 
         elif self.cv_strategy == 'kfold':
-            self.train_data = [self.processor.feature_engineering(df, type='train', fold=str(i)) for i, df in enumerate(train_data)]
-            self.valid_data = [self.processor.feature_engineering(df, type='valid', fold=str(i)) for i, df in enumerate(valid_data)]
+            self.train_data = [self.processor.feature_engineering(df, subset='train', fold=str(i)) for i, df in enumerate(train_data)]
+            self.valid_data = [self.processor.feature_engineering(df, subset='valid', fold=str(i)) for i, df in enumerate(valid_data)]
 
             self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
             self.valid_dataset = [TabularDataset(self.config, df, is_train=False) for df in self.valid_data]
@@ -57,7 +57,7 @@ class TabularDataModule:
         else:
             raise NotImplementedError
 
-        self.test_data = self.processor.feature_engineering(self.test_data, type='test')
+        self.test_data = self.processor.feature_engineering(self.test_data, subset='test')
         self.test_dataset = TabularDataset(self.config, self.test_data, is_train=False)
 
     def load_csv_file(self, path: str) -> pd.DataFrame:
@@ -82,14 +82,14 @@ class TabularDataProcessor:
         df.sort_values(by=['userID', 'Timestamp'], inplace=True)
         return df
     
-    def feature_engineering(self, df: pd.DataFrame, type: str = 'train', fold: str = "") -> pd.DataFrame:
+    def feature_engineering(self, df: pd.DataFrame, subset: str = 'train', fold: str = "") -> pd.DataFrame:
 
-        if self.feature_manager.need_feature_creation(type=type, fold=fold):
-            print(f"Saving features Dataframe csv.. --type {type} --fold {fold}")
-            self.feature_manager.create_features(df, type=type, fold=fold)
+        if self.feature_manager.need_feature_creation(subset=subset, fold=fold):
+            print(f"Saving features Dataframe csv.. --subset {subset} --fold {fold}")
+            self.feature_manager.create_features(df, subset=subset, fold=fold)
         
-        print(f"Loading features Dataframe csv.. --type {type} --fold {fold}")
-        df = self.feature_manager.prepare_df(self.config.features, self.config.features.features, df, type=type, fold=fold)
+        print(f"Loading features Dataframe csv.. --subset {subset} --fold {fold}")
+        df = self.feature_manager.prepare_df(self.config.features, self.config.features.features, df, subset=subset, fold=fold)
         return df
 
 
