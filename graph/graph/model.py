@@ -1,7 +1,7 @@
 import lightning as L
 import torch
 from torch_geometric.nn.models import LightGCN
-from preprocess import *
+from .preprocess import load_data, indexing_data
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 class LightGCNNet(L.LightningModule):
@@ -35,7 +35,6 @@ class LightGCNNet(L.LightningModule):
         auc = roc_auc_score(y_true=label, y_score=pred)
 
         return {'auc':auc, 'acc':acc, 'loss':loss}
-    
             
     def predict_step(self, batch, batch_idx):
         print("+++++++predict step++++++++")
