@@ -37,7 +37,7 @@ class Trainer:
 
     def train(self):
         wandb_logger = WandbLogger(name=self.config.wandb.name, project=self.config.wandb.project)
-        trainer = pl.Trainer(max_epochs = self.config.epoch, logger=wandb_logger)
+        trainer = pl.Trainer(max_epochs = self.config.trainer.epoch, logger=wandb_logger)
 
         logger.info("Start Training ...")
         trainer.fit(self.model, datamodule=self.dm)
