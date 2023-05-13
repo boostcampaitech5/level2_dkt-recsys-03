@@ -19,7 +19,6 @@ class Trainer:
         submission = pd.read_csv("/opt/ml/input/data/sample_submission.csv")
         submission['prediction'] = predictions[0]
 
-
         now = datetime.now()
         file_name = now.strftime('%m%d_%H%M%S_') + 'LightGCN' + "_submit.csv"
 
