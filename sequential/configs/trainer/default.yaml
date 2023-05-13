@@ -1,5 +1,8 @@
 # cross validation strategy
-cv_strategy: holdout
+cv_strategy: kfold
+
+# k value of k-fold cross validation
+k: 5
 
 # epoch for training
 epoch: 10
