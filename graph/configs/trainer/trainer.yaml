@@ -1,0 +1,11 @@
+# epoch for training
+epoch: 3
+
+# optimizer
+optimizer: adam
+
+# learning rate
+lr: 0.0001
+
+# log steps
+steps: 1

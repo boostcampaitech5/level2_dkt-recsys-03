@@ -1,0 +1,10 @@
+seed: 42
+timestamp: 
+
+defaults:
+  - _self_
+  - paths: default.yaml
+  - data: default.yaml
+  - trainer: default.yaml
+  - wandb: default.yaml
+  - model: LSTM.yaml

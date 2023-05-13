@@ -1,0 +1,6 @@
+# batch size of DataLoader
+train_batch_size: 2475962
+test_batch_size: 744
+
+# number of gpu workers
+num_workers: 4

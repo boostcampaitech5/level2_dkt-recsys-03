@@ -1,0 +1,11 @@
+features:
+  - KnowledgeTag
+  - user_acc
+  - tag_mean
+  - test_mean
+  - userLatentFactor1
+  - userLatentFactor2
+  - userLatentFactor3
+  - assessmentLatentFactor1
+  - assessmentLatentFactor2
+  - assessmentLatentFactor3

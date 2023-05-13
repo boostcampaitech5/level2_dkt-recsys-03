@@ -1,33 +1,54 @@
 # Byte-compiled / optimized / DLL files
+__pycache__
 __pycache__/
 *.py[cod]
 *$py.class
 
+
 # Jupyter Notebook
+.ipynb_checkpoints/
 .ipynb_checkpoints
 *.ipynb
+
 
 # IPython
 profile_default/
 ipython_config.py
 
+
 # logs
+DKT_Sequential/
+lightning_logs/
 *.log
 log
+*.ckpt
+
 
 # MacOS
 .DS_Store
 
+
 # For somebody who try to upload key file.. :)
 key
 
+
 # environment
 *.env
+
 
 # output
 /tabular/output
 /tabular/outputs
 /tabular/wandb
+/sequential/outputs
+/sequential/output
+/sequential/wandb
 
-# vscode
+#vscode
 /.vscode
+
+# Dataset
+*.csv
+*.npy
+/sequential/assets/
+
