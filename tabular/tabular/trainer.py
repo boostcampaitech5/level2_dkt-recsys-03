@@ -59,9 +59,9 @@ class Trainer:
         result = pd.DataFrame({'userID': user_id, 'prob': prob, 'pred': np.where(prob >= 0.5, 1, 0), 'true': true})
         return result
     
-    def save_result_csv(self, result: pd.DataFrame, fold="", type: str = 'valid') -> None:
+    def save_result_csv(self, result: pd.DataFrame, fold="", subset: str = 'valid') -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
-        filename = f"{self.config.timestamp}_{type}_{fold}.csv"
+        filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
         save_path = os.path.join(directory, filename)
 
         os.makedirs(directory, exist_ok=True)
@@ -97,9 +97,9 @@ class Trainer:
         train_auc, train_acc = get_metric(train.y, train_prob)
         valid_auc, valid_acc = get_metric(valid.y, valid_prob)
         print(f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
-        
+
         result = self.make_result_df(self.datamodule.valid_data, valid_prob, valid.y)
-        self.save_result_csv(result, type='valid')
+        self.save_result_csv(result, subset='valid')
         
     def inference(self, is_submit: bool = False) -> None:
         test = self.datamodule.test_dataset
@@ -113,7 +113,7 @@ class Trainer:
         if is_submit == True:
             submission = self.get_sample_submission_csv()
             submission['prediction'] = np.where(test_prob >= 0.5, 1, 0)
-            self.save_result_csv(submission, type='submission')
+            self.save_result_csv(submission, subset='submission')
             
         else:
             test_auc, test_acc = get_metric(test.y, test_prob)
@@ -123,7 +123,7 @@ class Trainer:
             wandb.log({"confusion matrix": wandb.plot.confusion_matrix(y_true=test.y.reset_index(drop=True), preds=np.where(test_prob >= 0.5, 1, 0), class_names=["0", "1"])})
 
             result = self.make_result_df(self.datamodule.test_data, test_prob, test.y)
-            self.save_result_csv(result, type='test')
+            self.save_result_csv(result, subset='test')
 
 
 class CrossValidationTrainer(Trainer):
@@ -168,7 +168,7 @@ class CrossValidationTrainer(Trainer):
                 wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
 
             result = self.make_result_df(self.datamodule.valid_data[i], valid_prob, valid.y)
-            self.save_result_csv(result, fold=str(i), type='valid')
+            self.save_result_csv(result, fold=str(i), subset='valid')
         
         print(f"cv_score:{cv_score}")
         wandb.log({'cv_score': cv_score})
@@ -188,7 +188,7 @@ class CrossValidationTrainer(Trainer):
         if is_submit == True:
             submission = self.get_sample_submission_csv()
             submission['prediction'] = test_pred
-            self.save_result_csv(submission, type='submission')
+            self.save_result_csv(submission, subset='submission')
             
         else:
             test_auc, test_acc = get_metric(test.y, test_prob)
@@ -198,7 +198,7 @@ class CrossValidationTrainer(Trainer):
             wandb.log({"confusion matrix": wandb.plot.confusion_matrix(y_true=test.y.reset_index(drop=True), preds=test_pred, class_names=["0", "1"])})
 
             result = self.make_result_df(self.datamodule.test_data, test_prob, test.y)
-            self.save_result_csv(result, type='test')
+            self.save_result_csv(result, subset='test')
 
     def soft_voting(self, probs: np.ndarray) -> Tuple:
         test_prob = np.mean(probs, axis=0)

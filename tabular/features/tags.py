@@ -1,12 +1,12 @@
-from features.preprocessor import PreProcessor
 import pandas as pd
+from features.feature_processor import FeatureProcessor
 
 
-class TagExposureCnt(PreProcessor):
+class TagExposureCnt(FeatureProcessor):
     '''태그 노출 횟수'''
     
     def columns(self) -> str:
-        return 'tagExposureCnt'
+        return 'tag_exposure_cnt'
     
     def create_feature(self, df: pd.DataFrame, **kwargs: dict) -> pd.Series:
         exp_cnt_by_tag = df.groupby('KnowledgeTag').size().reset_index()
