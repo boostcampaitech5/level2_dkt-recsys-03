@@ -117,7 +117,7 @@ class KfoldTrainer(Trainer):
             self.cv_predict()
         
         # cv_score result
-        print(f"cv_auc_score: {self.cv_score}")
+        print(f"-----------------cv_auc_score: {self.cv_score}-----------------")
         wandb.log({'cv_score': self.cv_score})
 
     def cv_predict(self):
@@ -153,7 +153,8 @@ class KfoldTrainer(Trainer):
             df_list.append(df['prediction'])
         
         # soft voting
-        submit_df['prediction'] = pd.DataFrame(np.mean(np.array(df_list), axis=0))
+        test_prob, test_pred = self.soft_voting(self, df_list)
+        submit_df['prediction'] = pd.DataFrame(test_prob)
 
         # file saving
         file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "fold_submit.csv"
@@ -163,8 +164,12 @@ class KfoldTrainer(Trainer):
         submit_df.to_csv(write_path, index=False)
         print(f"Successfully saved submission as {write_path}")
         wandb.save(write_path)
-
-        # cal soft_voting -> test_prob, test_pred
-
+        
         # save test_prob file in local, wandb -> bar plot
         # save test_pred file in local, wandb -> confusion matrix
+
+    def soft_voting(self, df_list):
+        test_prob = np.mean(np.array(df_list), axis=0)
+        test_pred = np.where(test_prob >= 0.5, 1, 0)
+
+        return test_prob, test_pred
