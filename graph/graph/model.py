@@ -1,18 +1,21 @@
-import lightning as L
 import torch
+import lightning as L
+from omegaconf import DictConfig
 from torch_geometric.nn.models import LightGCN
 from .preprocess import load_data, indexing_data
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 class LightGCNNet(L.LightningModule):
-    def __init__(self):
+    def __init__(self, config: DictConfig):
         super().__init__()
-        # Define Graph-based model
-        self.data = load_data("/opt/ml/input/data")
+        self.config = config
+        self.data = load_data(self.config.paths.data_path)
         self.n_nodes = len(indexing_data(data=self.data))
-        self.embedding_dim = 64
-        self.num_layers = 2
-        self.model = LightGCN(num_nodes=self.n_nodes, embedding_dim=self.embedding_dim, num_layers=self.num_layers)
+        self.embedding_dim = self.config.model.emb_dim
+        self.num_layers = self.config.model.n_layers
+        self.model = LightGCN(num_nodes=self.n_nodes, 
+                              embedding_dim=self.embedding_dim, 
+                              num_layers=self.num_layers)
     
     def forward(self, edge_index):
         print("+++++++forward++++++++")
@@ -46,4 +49,7 @@ class LightGCNNet(L.LightningModule):
 
     def configure_optimizers(self):
         print("+++++++config opt++++++++")
-        return torch.optim.Adam(params=self.model.parameters(), lr=0.001)
+        if self.config.trainer.optimizer == "adam":
+            optimizer = torch.optim.Adam(params = self.model.parameters(), 
+                                         lr = self.config.trainer.lr)
+        return [optimizer]

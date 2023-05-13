@@ -1,18 +1,11 @@
 import os
+import torch
 import pandas as pd
 from typing import Tuple, Dict
-import torch
+from omegaconf import DictConfig
 
 
-def prepare_dataset( data_dir: str) -> Tuple[dict, dict, int]:
-    data = load_data(data_dir=data_dir)
-    train_data, test_data = separate_data(data=data)
-    id2index: dict = indexing_data(data=data)
-    train_data_proc = process_data(data=train_data, id2index=id2index)
-    test_data_proc = process_data(data=test_data, id2index=id2index)
-    return train_data_proc, test_data_proc, len(id2index)
-
-def load_data(data_dir: str) -> pd.DataFrame: 
+def load_data(data_dir:str) -> pd.DataFrame: 
     path1 = os.path.join(data_dir, "train_data.csv")
     path2 = os.path.join(data_dir, "test_data.csv")
     data1 = pd.read_csv(path1)
