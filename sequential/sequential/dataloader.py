@@ -56,10 +56,10 @@ class DKTDataset(Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
+
 class DKTDataModule(pl.LightningDataModule):
     def __init__(self, config: DictConfig):
         super().__init__()
-        # self.args = args
         self.config = config
         self.df = pd.DataFrame()
         self.test_df = pd.DataFrame()
@@ -115,7 +115,6 @@ class DKTDataModule(pl.LightningDataModule):
     # split train data to train & valid : this part will be excahnged
     def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
 
-        # seed = self.args.seed
         seed = self.config.seed
         if shuffle:
             random.seed(seed)
@@ -182,3 +181,22 @@ class DKTDataModule(pl.LightningDataModule):
     def predict_dataloader(self):
         testset = DKTDataset(self.test_data, self.config)
         return DataLoader(testset, batch_size=self.config.data.batch_size, shuffle=False, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
+
+
+class DKTDataKFoldModule(DKTDataModule):
+    def __init__(self, config: DictConfig):
+        super().__init__(config)
+        self.config = config
+
+        self.train_data = None
+        self.valid_data = None
+        self.test_data = None
+    
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage = None):
+        if stage == "fit" or stage is None:
+            pass
+        if stage == "predict" or stage is None:
+            pass
