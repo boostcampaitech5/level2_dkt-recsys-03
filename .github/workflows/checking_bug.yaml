@@ -20,7 +20,7 @@ jobs:
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
-      run: python pip install -r requirements.txt
+      run: pip install -r requirements.txt
 
     - name: test main.py
       working-directory: ${{ env.working-directory }}
@@ -42,7 +42,7 @@ jobs:
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
-      run: python pip install -r requirements.txt
+      run: pip install -r requirements.txt
 
     - name: test main.py
       working-directory: ${{ env.working-directory }}
