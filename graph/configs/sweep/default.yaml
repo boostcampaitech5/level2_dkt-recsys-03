@@ -1,0 +1,15 @@
+program: main.py
+method: grid
+metric:
+  goal: maximize
+  name: test/accuracy
+parameters:
+  dataset:
+    values: [mnist, cifar10]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
+
