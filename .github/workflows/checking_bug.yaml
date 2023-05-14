@@ -8,7 +8,7 @@ jobs:
     name: testing sequential approach
     runs-on: ubuntu-latest 
     env:
-      working-directory: /sequential
+      working-directory: ./sequential
 
     steps: 
     - uses: actions/checkout@v3 
@@ -30,7 +30,7 @@ jobs:
     name: testing graph approach
     runs-on: ubuntu-latest 
     env:
-      working-directory: /graph
+      working-directory: ./graph
 
     steps: 
     - uses: actions/checkout@v3 
