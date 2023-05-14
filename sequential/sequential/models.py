@@ -44,6 +44,9 @@ class ModelBase(pl.LightningModule):
         self.validation_step_outputs = []
         self.test_step_outputs= []
 
+        self.tr_result = []
+        self.val_result = []
+
     def forward(self, test, question, tag, correct, mask, interaction):
         batch_size = interaction.size(0)
 
@@ -105,6 +108,7 @@ class ModelBase(pl.LightningModule):
         logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"tr_loss" : avg_loss, "tr_auc" : avg_auc, "tr_acc" : avg_acc})
 
+        self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
         self.training_step_outputs.clear()
     
     def validation_step(self, batch, batch_idx):
@@ -128,8 +132,9 @@ class ModelBase(pl.LightningModule):
 
         logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss" : avg_loss, "val_auc" : avg_auc, "val_acc" : avg_acc})
-
         self.log("val_auc", avg_auc)
+
+        self.val_result.append({"val_avg_auc": avg_auc, "val_avg_acc": avg_acc})
         self.validation_step_outputs.clear()
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):

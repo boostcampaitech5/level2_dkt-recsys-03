@@ -37,7 +37,7 @@ def main(config: DictConfig = None) -> None:
         trainer.train()
         trainer.predict()
     elif config.trainer.cv_strategy == "kfold":
-        trainer = KfoldTrainer(config, dm)
+        trainer = KfoldTrainer(config)
         trainer.cv()
         trainer.oof()
     else:
