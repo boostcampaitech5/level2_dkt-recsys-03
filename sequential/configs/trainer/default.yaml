@@ -1,5 +1,5 @@
 # cross validation strategy
-cv_strategy: kfold
+cv_strategy: holdout
 
 # k value of k-fold cross validation
 k: 5
