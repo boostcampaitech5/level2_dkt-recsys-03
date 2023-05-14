@@ -5,10 +5,10 @@ program: main.py
 method: grid
 metric:
   goal: maximize
-  name: tr_auc/tr_acc
+  name: val_auc
 parameters:
   model:
-    values: [LSTM]
+    values: [LSTM, LSTMATTN, BERT]
   trainer.epoch:
     values: [10, 20, 30]
 

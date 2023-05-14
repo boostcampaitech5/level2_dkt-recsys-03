@@ -167,7 +167,7 @@ class LSTMATTN(ModelBase):
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
         self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
-        self.config = BertConfig(
+        self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
             num_hidden_layers=1,
@@ -176,7 +176,7 @@ class LSTMATTN(ModelBase):
             hidden_dropout_prob=self.drop_out,
             attention_probs_dropout_prob=self.drop_out,
         )
-        self.attn = BertEncoder(self.config)
+        self.attn = BertEncoder(self.bert_config)
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(test=test,
@@ -210,14 +210,14 @@ class BERT(ModelBase):
         self.drop_out = self.config.model.drop_out
         self.max_seq_len = self.config.data.max_seq_len
         # Bert config
-        self.config = BertConfig(
+        self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
             num_hidden_layers=self.n_layers,
             num_attention_heads=self.n_heads,
             max_position_embeddings=self.max_seq_len,
         )
-        self.encoder = BertModel(self.config)  # Transformer Encoder
+        self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(test=test,
