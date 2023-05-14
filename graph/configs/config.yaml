@@ -4,8 +4,8 @@ timestamp:
 defaults:
   - _self_
   - model: LightGCN.yaml
-  - data: data_default.yaml
-  - paths: paths.yaml
-  - trainer: trainer.yaml
-  - wandb: wandb.yaml
-  - sweep: sweep.yaml
+  - data: default.yaml
+  - paths: default.yaml
+  - trainer: default.yaml
+  - wandb: default.yaml
+  - sweep: default.yaml
