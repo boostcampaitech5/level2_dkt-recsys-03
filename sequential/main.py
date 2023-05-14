@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 from sequential.dataloader import DKTDataModule
 from sequential.utils import set_seeds, get_logger, logging_conf, get_timestamp
 from sequential.models import LSTM, LSTMATTN, BERT
-from sequential.trainer import Trainer
+from sequential.trainer import Trainer, KfoldTrainer
 
 logger = get_logger(logging_conf)
 
@@ -32,14 +32,14 @@ def main(config: DictConfig = None) -> None:
     run.tags = [config.model.model_name, config.trainer.cv_strategy]
     wandb.save(f"./configs/config.yaml")
 
-    # setup datamodule
-    print(f"----------------- Setup datamodule -----------------")
-    logger.info("Preparing data ...")
-    dm = DKTDataModule(config)
-
     if config.trainer.cv_strategy == "holdout":
-        trainer = Trainer(config, dm)
+        trainer = Trainer(config)
         trainer.train()
+        trainer.predict()
+    elif config.trainer.cv_strategy == "kfold":
+        trainer = KfoldTrainer(config)
+        trainer.cv()
+        trainer.oof()
     else:
         raise NotImplementedError
     
