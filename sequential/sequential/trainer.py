@@ -113,13 +113,13 @@ class KfoldTrainer(Trainer):
 
             print(f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}")
             self.cv_score += (val_auc / self.config.trainer.k)
-            self.cv_predict()
+            self.cv_predict(fold)
         
         # cv_score result
         print(f"-----------------cv_auc_score: {self.cv_score}-----------------")
         wandb.log({'cv_score': self.cv_score})
 
-    def cv_predict(self):
+    def cv_predict(self, fold: int):
         logger.info("Making Prediction ...")
         predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.fold_dm)
 
@@ -129,7 +129,7 @@ class KfoldTrainer(Trainer):
         submit_df = submit_df.reset_index()
         submit_df.columns = ['id', 'prediction']
 
-        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_submit.csv"
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         self.result_csv_list.append(write_path)
 
@@ -156,7 +156,7 @@ class KfoldTrainer(Trainer):
         submit_df['prediction'] = pd.DataFrame(test_prob)
 
         # file saving
-        file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "fold_submit.csv"
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         os.makedirs(name=self.config.paths.output_path, exist_ok=True)
 
