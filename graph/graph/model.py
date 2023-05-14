@@ -17,6 +17,8 @@ class LightGCNNet(L.LightningModule):
         self.model = LightGCN(num_nodes=self.n_nodes, 
                               embedding_dim=self.embedding_dim, 
                               num_layers=self.num_layers)
+        
+        wandb.log({"num_nodes" : self.n_nodes, "embedding_dim" : self.embedding_dim, "num_layers" : self.num_layers})
         self.training_step_outputs = []
     
     def forward(self, edge_index):

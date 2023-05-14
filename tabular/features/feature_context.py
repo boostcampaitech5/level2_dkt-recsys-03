@@ -3,7 +3,7 @@ from features.assessments import AssessmentNum, UserSolvedCnt, RepeatCnt
 from features.tags import TagExposureCnt
 from features.tests import TestNum, TestType
 from features.timestamps import Month, Hour, DayOfWeek
-from features.solving_time import SolvingTime
+from features.rolling_time import RollingTime
 from features.memory import UserAcc, UserItemAcc, UserTag1Acc, UserTag2Acc, UserLastTag1Correct, UserLastTag2Correct
 
 
@@ -25,8 +25,8 @@ def feature_manager(csv_path: str) -> FeatureManager:
         Month(),
         Hour(),
         DayOfWeek(),
-        # solving_time.py
-        SolvingTime(),
+        # rolling_time.py
+        RollingTime(),
         # memory.py
         UserAcc(),
         UserItemAcc(),

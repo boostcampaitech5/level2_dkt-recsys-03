@@ -8,8 +8,8 @@ features:
   - user_tag2_acc
   - user_last_tag1_correct
   - user_last_tag2_correct
-# solving_time.py
-  - solving_time
+# rolling_time.py
+  - rolling_time
 # assessments.py
   - assessment_num
   - user_solved_cnt
@@ -24,7 +24,5 @@ features:
   - month
   - hour
 
-
-contain_repeat_cnt: True
-fill_nan: 0
-type: 'second'
+# option rolling_time
+n_rolling: 6
