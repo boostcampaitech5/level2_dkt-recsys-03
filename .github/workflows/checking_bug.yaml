@@ -2,10 +2,10 @@ name: check bug before merge
 
 on: 
   pull_request: 
-  branches: [main]
+    branches: [main]
 jobs: 
   run_seq: 
-    name : testing sequential approach
+    name: testing sequential approach
     runs-on: ubuntu-latest 
     env:
       working-directory: /sequential
@@ -27,7 +27,7 @@ jobs:
       run: pytest
       
   run_graph: 
-    name : testing graph approach
+    name: testing graph approach
     runs-on: ubuntu-latest 
     env:
       working-directory: /graph
