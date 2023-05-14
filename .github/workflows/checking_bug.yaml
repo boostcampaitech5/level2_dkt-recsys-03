@@ -1,0 +1,49 @@
+name: check bug before merge
+
+on: 
+  pull_request: 
+  branches: [main]
+jobs: 
+  run_seq: 
+    name : testing sequential approach
+    runs-on: ubuntu-latest 
+    env:
+      working-directory: /sequential
+
+    steps: 
+    - uses: actions/checkout@v3 
+
+    - name: setup python 
+      uses: actions/setup-python@v4 
+      with: 
+        python-version: '3.10' 
+
+    - name: install dependencies 
+      working-directory: ${{ env.working-directory }}
+      run: python pip install -r requirements.txt
+
+    - name: test main.py
+      working-directory: ${{ env.working-directory }}
+      run: pytest
+      
+  run_graph: 
+    name : testing graph approach
+    runs-on: ubuntu-latest 
+    env:
+      working-directory: /graph
+
+    steps: 
+    - uses: actions/checkout@v3 
+
+    - name: setup python 
+      uses: actions/setup-python@v4 
+      with: 
+        python-version: '3.10' 
+
+    - name: install dependencies 
+      working-directory: ${{ env.working-directory }}
+      run: python pip install -r requirements.txt
+
+    - name: test main.py
+      working-directory: ${{ env.working-directory }}
+      run: pytest
