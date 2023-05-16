@@ -107,7 +107,6 @@ class TabularDataModule:
             f.write("---------------------\n")
             f.write(f"Data Version: {self.config.timestamp}\n")
             f.write(f'Column Names: {", ".join(df.columns)}\n')
-        f.close()
 
     def update_version(self) -> None:
         """
