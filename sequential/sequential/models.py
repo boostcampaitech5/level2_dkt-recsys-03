@@ -1,10 +1,8 @@
-import os
 import torch
 import wandb
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, random_split
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
 from .metrics import get_metric
@@ -43,6 +41,9 @@ class ModelBase(pl.LightningModule):
         self.training_step_outputs = []
         self.validation_step_outputs = []
         self.test_step_outputs= []
+
+        self.tr_result = []
+        self.val_result = []
 
     def forward(self, test, question, tag, correct, mask, interaction):
         batch_size = interaction.size(0)
@@ -105,6 +106,7 @@ class ModelBase(pl.LightningModule):
         logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"tr_loss" : avg_loss, "tr_auc" : avg_auc, "tr_acc" : avg_acc})
 
+        self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
         self.training_step_outputs.clear()
     
     def validation_step(self, batch, batch_idx):
@@ -128,8 +130,9 @@ class ModelBase(pl.LightningModule):
 
         logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss" : avg_loss, "val_auc" : avg_auc, "val_acc" : avg_acc})
-
         self.log("val_auc", avg_auc)
+
+        self.val_result.append({"val_avg_auc": avg_auc, "val_avg_acc": avg_acc})
         self.validation_step_outputs.clear()
     
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
@@ -163,7 +166,7 @@ class LSTMATTN(ModelBase):
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
         self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
-        self.config = BertConfig(
+        self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
             num_hidden_layers=1,
@@ -172,7 +175,7 @@ class LSTMATTN(ModelBase):
             hidden_dropout_prob=self.drop_out,
             attention_probs_dropout_prob=self.drop_out,
         )
-        self.attn = BertEncoder(self.config)
+        self.attn = BertEncoder(self.bert_config)
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(test=test,
@@ -206,14 +209,14 @@ class BERT(ModelBase):
         self.drop_out = self.config.model.drop_out
         self.max_seq_len = self.config.data.max_seq_len
         # Bert config
-        self.config = BertConfig(
+        self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
             num_hidden_layers=self.n_layers,
             num_attention_heads=self.n_heads,
             max_position_embeddings=self.max_seq_len,
         )
-        self.encoder = BertModel(self.config)  # Transformer Encoder
+        self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(test=test,

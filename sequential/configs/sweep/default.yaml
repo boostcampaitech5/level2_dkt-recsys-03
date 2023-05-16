@@ -1,0 +1,19 @@
+# sweep/default.yaml example
+project: DKT_Sequential
+entity: recsys01
+program: main.py
+method: grid
+metric:
+  goal: maximize
+  name: val_auc
+parameters:
+  model:
+    values: [LSTM, LSTMATTN, BERT]
+  trainer.epoch:
+    values: [10, 20, 30]
+
+command:
+- ${env}
+- ${interpreter}
+- ${program}
+- ${args_no_hyphens}
