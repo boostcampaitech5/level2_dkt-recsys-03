@@ -14,9 +14,7 @@ def check_and_get_generators(
     features = OmegaConf.to_container(config.features)["features"]
     generators = []
     for feature in features:
-        if feature in df.columns:
-            pass
-        else:
+        if feature not in df.columns:
             generators.append((feature, get_feature_generator(feature)))
     return generators
 
