@@ -8,7 +8,7 @@ metric:
   name: val_auc
 parameters:
   model:
-    values: [LSTM, LSTMATTN, BERT]
+    values: [LSTM, LSTMATTN, BERT, SAINT_PLUS]
   trainer.epoch:
     values: [10, 20, 30]
 

@@ -1,0 +1,9 @@
+model_name: SAINT_PLUS
+
+n_encoder: 4
+n_decoder: 4
+n_heads: 8
+embed_dims: 512
+
+n_questions: 9455
+n_tags: 913
