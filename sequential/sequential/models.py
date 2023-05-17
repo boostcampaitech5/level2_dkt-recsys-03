@@ -2,7 +2,9 @@ import torch
 import wandb
 import numpy as np
 import torch.nn as nn
+import warnings
 import pytorch_lightning as pl
+from omegaconf import DictConfig
 from torch.nn import functional as F
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
@@ -13,6 +15,39 @@ from .optimizer import get_optimizer
 
 
 logger = get_logger(logging_conf)
+
+
+def set_logging(config: DictConfig) -> None:
+    wandb.log({"batch_size": config.data.batch_size, "max_seq_len": config.data.max_seq_len})
+
+    wandb.log(
+        {
+            "epoch": config.trainer.epoch,
+            "optimizer": config.trainer.optimizer,
+            "lr": config.trainer.lr,
+            "weight_decay": config.trainer.weight_decay,
+            "scheduler": config.trainer.scheduler,
+        }
+    )
+
+    wandb.log({"model_name": config.model.model_name})
+
+    if config.model.model_name in ["LSTM", "LSTMATTN", "BERT", "LQTR"]:
+        wandb.log(
+            {
+                "hidden_dim": config.model.hidden_dim,
+                "n_layers": config.model.n_layers,
+                "n_tests": config.model.n_tests,
+                "n_questions": config.model.n_questions,
+                "n_tags": config.model.n_tags,
+            }
+        )
+
+    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR"]:
+        wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
+
+    if config.model.model_name in ["LQRT"]:
+        wandb.log({"POS": config.model.POS})
 
 
 class ModelBase(pl.LightningModule):
@@ -38,6 +73,9 @@ class ModelBase(pl.LightningModule):
 
         # Fully connected layer
         self.fc = nn.Linear(hd, 1)
+
+        # wandb logging
+        set_logging(self.config)
 
         self.training_step_outputs = []
         self.validation_step_outputs = []
@@ -119,15 +157,11 @@ class ModelBase(pl.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
-        avg_loss = torch.stack(
-            [x["tr_loss"] for x in self.training_step_outputs]
-        ).mean()
+        avg_loss = torch.stack([x["tr_loss"] for x in self.training_step_outputs]).mean()
         avg_auc = torch.stack([x["tr_auc"] for x in self.training_step_outputs]).mean()
         avg_acc = torch.stack([x["tr_acc"] for x in self.training_step_outputs]).mean()
 
-        logger.info(
-            f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"tr_loss": avg_loss, "tr_auc": avg_auc, "tr_acc": avg_acc})
 
         self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
@@ -152,19 +186,11 @@ class ModelBase(pl.LightningModule):
         return metrics
 
     def on_validation_epoch_end(self):
-        avg_loss = torch.stack(
-            [x["val_loss"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_auc = torch.stack(
-            [x["val_auc"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_acc = torch.stack(
-            [x["val_acc"] for x in self.validation_step_outputs]
-        ).mean()
+        avg_loss = torch.stack([x["val_loss"] for x in self.validation_step_outputs]).mean()
+        avg_auc = torch.stack([x["val_auc"] for x in self.validation_step_outputs]).mean()
+        avg_acc = torch.stack([x["val_acc"] for x in self.validation_step_outputs]).mean()
 
-        logger.info(
-            f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
         self.log("val_auc", avg_auc)
 
@@ -181,11 +207,11 @@ class ModelBase(pl.LightningModule):
 class LSTM(ModelBase):
     def __init__(self, config):
         super().__init__(config)
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(
+        self, test, question, tag, correct, mask, interaction, **kwargs
+    ):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -205,9 +231,7 @@ class LSTMATTN(ModelBase):
         super().__init__(config)
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
         self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
@@ -219,7 +243,9 @@ class LSTMATTN(ModelBase):
         )
         self.attn = BertEncoder(self.bert_config)
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(
+        self, test, question, tag, correct, mask, interaction, **kwargs
+    ):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -261,7 +287,9 @@ class BERT(ModelBase):
         )
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(
+        self, test, question, tag, correct, mask, interaction, **kwargs
+    ):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -279,21 +307,27 @@ class BERT(ModelBase):
 
 
 class EncoderEmbedding(nn.Module):
-    def __init__(self, n_questions, n_tags, n_dims, seq_len):
+    def __init__(self, n_questions, n_tests, n_tags, n_test_types, n_dims, seq_len):
         super(EncoderEmbedding, self).__init__()
         self.n_dims = n_dims
         self.seq_len = seq_len
+        self.embedding_test = nn.Embedding(n_tests, n_dims)
         self.embedding_question = nn.Embedding(n_questions, n_dims)
         self.embedding_tag = nn.Embedding(n_tags, n_dims)
+        self.embedding_test_type = nn.Embedding(n_test_types, n_dims)
         self.embedding_pos = nn.Embedding(seq_len, n_dims)
 
-    def forward(self, questions, tags):
+    def forward(self, tests, questions, tags, test_types):
+        device = questions.device
+
+        embed_test = self.embedding_test(tests)
         embed_quest = self.embedding_question(questions)
         embed_tag = self.embedding_tag(tags)
+        embed_test_type = self.embedding_test_type(test_types)
 
-        seq = torch.arange(self.seq_len).unsqueeze(0)
+        seq = torch.arange(self.seq_len).unsqueeze(0).to(device)
         embed_pos = self.embedding_pos(seq)
-        return embed_quest + embed_tag + embed_pos
+        return embed_test + embed_quest + embed_tag + embed_test_type + embed_pos
 
 
 class DecoderEmbedding(nn.Module):
@@ -302,16 +336,20 @@ class DecoderEmbedding(nn.Module):
         self.n_dims = n_dims
         self.seq_len = seq_len
         self.embedding_response = nn.Embedding(n_responses, n_dims)
-        self.embedding_solving_time = nn.Linear(1, n_dims, bias=False)
+        self.embedding_prior_solving_time = nn.Linear(1, n_dims, bias=False)
         self.embedding_pos = nn.Embedding(seq_len, n_dims)
 
-    def forward(self, responses, solving_times):
-        embed_response = self.embedding_response(responses)
-        embed_solving_time = self.solving_time_embed(solving_times)
+    def forward(self, responses, prior_solving_time):
+        device = responses.device
 
-        seq = torch.arange(self.seq_len).unsqueeze(0)
+        prior_solving_time = prior_solving_time.float()
+
+        embed_response = self.embedding_response(responses)
+        embed_prior_solving_time = self.embedding_prior_solving_time(prior_solving_time)
+
+        seq = torch.arange(self.seq_len).unsqueeze(0).to(device)
         embed_pos = self.embedding_pos(seq)
-        return embed_response + embed_solving_time + embed_pos
+        return embed_response + embed_prior_solving_time + embed_pos
 
 
 class SAINTPLUS(pl.LightningModule):
@@ -320,9 +358,12 @@ class SAINTPLUS(pl.LightningModule):
 
         self.config = config
         self.seq_len = self.config.data.max_seq_len
+        self.n_tests = self.config.model.n_tests
         self.n_questions = self.config.model.n_questions
         self.n_tags = self.config.model.n_tags
+        self.n_test_types = self.config.model.n_test_types
 
+        self.dropout = self.config.model.dropout
         self.n_heads = self.config.model.n_heads
         self.n_encoder = self.config.model.n_decoder
         self.n_decoder = self.config.model.n_decoder
@@ -331,19 +372,16 @@ class SAINTPLUS(pl.LightningModule):
 
         # Embedding
         self.encoder_embedding = EncoderEmbedding(
+            n_tests=self.n_tests,
             n_questions=self.n_questions,
             n_tags=self.n_tags,
+            n_test_types=self.n_test_types,
             n_dims=self.embed_dims,
             seq_len=self.seq_len,
         )
 
         self.decoder_embedding = DecoderEmbedding(
-            n_responses=3, n_dims=self.embed_dims, seq_len=self.seq_len
-        )
-
-        # mask
-        self.mask = torch.from_numpy(
-            np.triu(np.ones((self.seq_len, self.seq_len)), k=1).astype("bool")
+            n_responses=4, n_dims=self.embed_dims, seq_len=self.seq_len
         )
 
         # transformer
@@ -353,29 +391,48 @@ class SAINTPLUS(pl.LightningModule):
             num_encoder_layers=self.n_decoder,
             num_decoder_layers=self.n_decoder,
             dim_feedforward=self.ffn_dim,
+            dropout=self.dropout,
+            batch_first=True,
         )
 
         # fully connected layer
-        self.fc = nn.Linear(self.ffn_dim, 1)
+        self.fc = nn.Linear(self.embed_dims, 1)
 
         # logs
         self.training_step_outputs = []
         self.validation_step_outputs = []
         self.test_step_outputs = []
 
-    def forward(
-        self, question, tag, correct, solving_time, **kwargs
-    ):  # kwargs is not used
-        enc = self.encoder_embedding(questions=question, tags=tag)
-        dec = self.decoder_embedding(responses=correct, solving_time=solving_time)
+        self.tr_result = []
+        self.val_result = []
 
-        decoder_output = self.transformer(
-            src=enc,  # encoder seq
-            tgt=dec,  # decoder seq
-            src_mask=self.mask,
-            tgt_mask=self.mask,
-            memory_mask=self.mask,
+    def forward(
+        self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs
+    ):  # kwargs is not used
+        device = question.device
+
+        interaction[:, 0] = 3
+        prior_solving_time = prior_solving_time.unsqueeze(-1)
+
+        enc = self.encoder_embedding(tests=test, questions=question, tags=tag, test_types=test_type)
+        dec = self.decoder_embedding(responses=interaction, prior_solving_time=prior_solving_time)
+        # mask
+        mask = (
+            torch.ones((self.seq_len, self.seq_len))
+            .triu(diagonal=1)
+            .to(device=device, dtype=torch.bool)
         )
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+
+            decoder_output = self.transformer(
+                src=enc,  # encoder seq
+                tgt=dec,  # decoder seq
+                src_mask=mask,
+                tgt_mask=mask,
+                memory_mask=mask,
+            )
 
         # fully connected layer
         out = self.fc(decoder_output)
@@ -391,8 +448,30 @@ class SAINTPLUS(pl.LightningModule):
         loss_val = torch.mean(loss_val)
         return loss_val
 
+    # Set optimizer, scheduler
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
+        optimizer = get_optimizer(param=self.parameters(), config=self.config)
+        scheduler = get_scheduler(optimizer=optimizer, config=self.config)
+
+        if self.config.trainer.scheduler == "plateau":
+            return [optimizer], [
+                {
+                    "scheduler": scheduler,
+                    "interval": "epoch",
+                    "frequency": 1,
+                    "monitor": "val_auc",
+                    "name": "seq_lr_scheduler",
+                }
+            ]
+        else:
+            return [optimizer], [
+                {
+                    "scheduler": scheduler,
+                    "interval": "epoch",
+                    "frequency": 1,
+                    "name": "seq_lr_scheduler",
+                }
+            ]
 
     def training_step(self, batch, batch_ids):
         output = self(**batch)  # predict
@@ -412,16 +491,12 @@ class SAINTPLUS(pl.LightningModule):
 
         return loss
 
-    def training_epoch_end(self, training_ouput):
-        avg_loss = torch.stack(
-            [x["tr_loss"] for x in self.training_step_outputs]
-        ).mean()
+    def on_train_epoch_end(self):
+        avg_loss = torch.stack([x["tr_loss"] for x in self.training_step_outputs]).mean()
         avg_auc = torch.stack([x["tr_auc"] for x in self.training_step_outputs]).mean()
         avg_acc = torch.stack([x["tr_acc"] for x in self.training_step_outputs]).mean()
 
-        logger.info(
-            f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"tr_loss": avg_loss, "tr_auc": avg_auc, "tr_acc": avg_acc})
 
         self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
@@ -446,19 +521,11 @@ class SAINTPLUS(pl.LightningModule):
         return metrics
 
     def on_validation_epoch_end(self):
-        avg_loss = torch.stack(
-            [x["val_loss"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_auc = torch.stack(
-            [x["val_auc"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_acc = torch.stack(
-            [x["val_acc"] for x in self.validation_step_outputs]
-        ).mean()
+        avg_loss = torch.stack([x["val_loss"] for x in self.validation_step_outputs]).mean()
+        avg_auc = torch.stack([x["val_auc"] for x in self.validation_step_outputs]).mean()
+        avg_acc = torch.stack([x["val_acc"] for x in self.validation_step_outputs]).mean()
 
-        logger.info(
-            f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
         self.log("val_auc", avg_auc)
 
@@ -470,3 +537,113 @@ class SAINTPLUS(pl.LightningModule):
         pred = F.sigmoid(output[:, -1])
         pred = pred.cpu().detach().numpy()
         return pred
+
+
+class Feed_Forward_bolck(nn.Module):
+    """
+    res = Relu( M_out * w1 + b1 ) * w2 + b2
+    """
+
+    def __init__(self, dim_ffn):
+        super().__init__()
+        self.layer1 = nn.Linear(in_features=dim_ffn, out_features=dim_ffn)
+        self.layer2 = nn.Linear(in_features=dim_ffn, out_features=dim_ffn)
+
+    def forward(self, ffn_in):
+        return self.layer2(F.relu(self.layer1(ffn_in)))
+
+
+class LQTR(ModelBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.max_seq_len = self.config.data.max_seq_len
+
+        # POS embedding
+        self.embedding_position = nn.Embedding(self.max_seq_len, self.hidden_dim)
+
+        # Transformer Encoder
+        self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+
+        self.attn = nn.MultiheadAttention(embed_dim=self.hidden_dim, num_heads=self.n_heads)
+        self.mask = None
+        self.ffn = Feed_Forward_bolck(self.hidden_dim)
+
+        self.ln1 = nn.LayerNorm(self.hidden_dim)
+        self.ln2 = nn.LayerNorm(self.hidden_dim)
+
+        # LSTM
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
+
+    def init_hidden(self, batch_size):
+        h = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
+        h = h.to(self.device)
+
+        c = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
+        c = c.to(self.device)
+
+        return (h, c)
+
+    def get_pos(self, seq_len):
+        # use sine positional embeddinds
+        return torch.arange(seq_len).unsqueeze(0)
+
+    def forward(
+        self, test, question, tag, correct, mask, interaction, **kwargs
+    ):  # kwargs is not used
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
+
+        seq_len = interaction.size(1)
+
+        # case : POS embedding use
+        if self.config.model.POS:
+            position = self.get_pos(seq_len).to("cuda")
+            embed_pos = self.embedding_position(position)
+            X = X + embed_pos
+
+        # Encoder
+
+        q = self.query(X).permute(1, 0, 2)
+        q = self.query(X)[:, -1:, :].permute(1, 0, 2)
+
+        k = self.key(X).permute(1, 0, 2)
+        v = self.value(X).permute(1, 0, 2)
+
+        # Attention
+
+        # last query only
+        out, _ = self.attn(q, k, v)
+
+        # residual + Layer Norm
+        out = out.permute(1, 0, 2)
+        out = X + out
+        out = self.ln1(out)
+
+        # FFN
+        out = self.ffn(out)
+
+        # residual + Layer Norm
+        out = X + out
+        out = self.ln2(out)
+
+        # LSTM
+
+        hidden = self.init_hidden(batch_size)
+        out, hidden = self.lstm(out, hidden)
+
+        # DNN
+
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out).view(batch_size, -1)
+
+        return out
