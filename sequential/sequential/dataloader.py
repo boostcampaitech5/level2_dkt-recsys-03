@@ -1,15 +1,17 @@
 import os
 import time
+import wandb
 import torch
 import random
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from datetime import datetime
 import pytorch_lightning as pl
-
 from torch.utils.data import DataLoader, Dataset
 from omegaconf import DictConfig
 from sklearn.preprocessing import LabelEncoder
+
 
 class DKTDataset(Dataset):
     def __init__(self, data: np.ndarray, config: DictConfig):
@@ -32,17 +34,17 @@ class DKTDataset(Dataset):
         seq_len = len(row[0])
         if seq_len > self.max_seq_len:  # truncate
             for k, seq in data.items():
-                data[k] = seq[-self.max_seq_len:]
+                data[k] = seq[-self.max_seq_len :]
             mask = torch.ones(self.max_seq_len, dtype=torch.int16)
         else:  # pre-padding
             for k, seq in data.items():
                 tmp = torch.zeros(self.max_seq_len)
-                tmp[self.max_seq_len-seq_len:] = data[k]
+                tmp[self.max_seq_len - seq_len :] = data[k]
                 data[k] = tmp
             mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
             mask[-seq_len:] = 1
         data["mask"] = mask
-    
+
         # generate interaction
         interaction = data["correct"] + 1  # plus 1 for padding
         interaction = interaction.roll(shifts=1)
@@ -69,7 +71,7 @@ class DKTDataModule(pl.LightningDataModule):
         self.test_data = None
 
         self.pin_memory = False
-    
+
     # Fill feature engineering func if needed using self.df, self.test_df
     def __feature_engineering(self):
         pass
@@ -100,7 +102,9 @@ class DKTDataModule(pl.LightningDataModule):
                 self.df[col] = test
             else:
                 le.classes_ = np.load(le_path)
-                self.test_df[col] = self.test_df[col].apply(lambda x: x if str(x) in le.classes_ else "unknown")
+                self.test_df[col] = self.test_df[col].apply(
+                    lambda x: x if str(x) in le.classes_ else "unknown"
+                )
 
                 self.test_df[col] = self.test_df[col].astype(str)
                 test = le.transform(self.test_df[col])
@@ -111,76 +115,155 @@ class DKTDataModule(pl.LightningDataModule):
         else:
             self.test_df["Timestamp"] = self.test_df["Timestamp"].apply(convert_time)
 
-
     # split train data to train & valid : this part will be excahnged
-    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
-
+    def split_data(
+        self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42
+    ):
         seed = self.config.seed
         if shuffle:
             random.seed(seed)
             random.shuffle(data)
-        
+
         size = int(len(data) * ratio)
         self.train_data = data[:size]
         self.valid_data = data[size:]
+
+    def augemtation(self, data: pd.DataFrame) -> pd.DataFrame:
+        window_size = self.config.data.max_seq_len
+        stride = self.config.data.stride
+        wandb.log({"stride": stride})
+
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        augmented_data = {}
+
+        # Make empty dataframe
+        for col in data.columns:
+            augmented_data[col] = []
+        augmented_data = pd.DataFrame(augmented_data)
+        count_df = data[columns].groupby("userID").count()
+        count_dict = {}
+
+        for id in count_df.index:
+            count_dict[id] = count_df.loc[id][0]
+
+        n_id = int(0)
+        n_total = 0
+        for id, cnt in tqdm(count_dict.items()):
+            seq = data[data.userID == id].reset_index(drop=True)
+            if cnt <= window_size:
+                seq["userID"] = n_id
+                augmented_data = pd.concat([augmented_data, seq])
+                n_total += 1
+                n_id += 1
+            else:
+                total_window = ((cnt - window_size) // stride) + 1
+                for window_i in range(total_window):
+                    aug = seq.iloc[window_i * stride : window_i * stride + window_size, :]
+                    aug["userID"] = [n_id] * window_size
+                    augmented_data = pd.concat([augmented_data, aug])
+                    n_id += 1
+                n_total += total_window
+
+        return augmented_data
 
     # load and feature_engineering dataset
     def prepare_data(self):
         train_file_path = os.path.join(self.config.paths.data_path, self.config.paths.train_file)
         test_file_path = os.path.join(self.config.paths.data_path, self.config.paths.test_file)
 
-        self.df = pd.read_csv(train_file_path)
+        train = pd.read_csv(train_file_path)
+
+        if self.config.data.augmentation == True:
+            print("---------DATA AUGMENTATION-------")
+            before = train.userID.nunique()
+            self.df = self.augemtation(train)
+            print(f"before augmetation : {before}  after augmentation : {self.df.userID.nunique()}")
+        else:
+            self.df = train
+
         self.test_df = pd.read_csv(test_file_path)
         self.__feature_engineering()  # fill this func if needed
 
     # preprocess and set dataset on train/test case
-    def setup(self, stage = None):
+    def setup(self, stage=None):
         if stage == "fit" or stage is None:
             self.__preprocessing()
         if stage == "predict" or stage is None:
             self.__preprocessing(is_train=False)
-        
-        self.n_questions = len(np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy")))
-        self.n_tests = len(np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy")))
-        self.n_tags = len(np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy")))
+
+        self.n_questions = len(
+            np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy"))
+        )
+        self.n_tests = len(
+            np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy"))
+        )
+        self.n_tags = len(
+            np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy"))
+        )
 
         columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
 
         if stage == "fit" or stage is None:
-            self.df = self.df.sort_values(by=["userID","Timestamp"], axis=0)
-            group = self.df[columns].groupby("userID").apply(
-                lambda r: (
-                    r["testId"].values,
-                    r["assessmentItemID"].values,
-                    r["KnowledgeTag"].values,
-                    r["answerCode"].values,
-                )   
+            self.df = self.df.sort_values(by=["userID", "Timestamp"], axis=0)
+            group = (
+                self.df[columns]
+                .groupby("userID")
+                .apply(
+                    lambda r: (
+                        r["testId"].values,
+                        r["assessmentItemID"].values,
+                        r["KnowledgeTag"].values,
+                        r["answerCode"].values,
+                    )
+                )
             )
             self.split_data(group.values)
 
         if stage == "predict" or stage is None:
-            self.test_df = self.test_df.sort_values(by=["userID","Timestamp"], axis=0)
-            group = self.test_df[columns].groupby("userID").apply(
-                lambda r: (
-                    r["testId"].values,
-                    r["assessmentItemID"].values,
-                    r["KnowledgeTag"].values,
-                    r["answerCode"].values,
-                )   
+            self.test_df = self.test_df.sort_values(by=["userID", "Timestamp"], axis=0)
+            group = (
+                self.test_df[columns]
+                .groupby("userID")
+                .apply(
+                    lambda r: (
+                        r["testId"].values,
+                        r["assessmentItemID"].values,
+                        r["KnowledgeTag"].values,
+                        r["answerCode"].values,
+                    )
+                )
             )
             self.test_data = group.values
 
     def train_dataloader(self):
         trainset = DKTDataset(self.train_data, self.config)
-        return DataLoader(trainset, batch_size=self.config.data.batch_size, shuffle=True, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
+        return DataLoader(
+            trainset,
+            batch_size=self.config.data.batch_size,
+            shuffle=True,
+            num_workers=self.config.data.num_workers,
+            pin_memory=self.pin_memory,
+        )
 
     def val_dataloader(self):
         valset = DKTDataset(self.valid_data, self.config)
-        return DataLoader(valset, batch_size=self.config.data.batch_size, shuffle=False, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
+        return DataLoader(
+            valset,
+            batch_size=self.config.data.batch_size,
+            shuffle=False,
+            num_workers=self.config.data.num_workers,
+            pin_memory=self.pin_memory,
+        )
 
     def predict_dataloader(self):
         testset = DKTDataset(self.test_data, self.config)
-        return DataLoader(testset, batch_size=self.config.data.batch_size, shuffle=False, num_workers=self.config.data.num_workers, pin_memory=self.pin_memory)
+        return DataLoader(
+            testset,
+            batch_size=self.config.data.batch_size,
+            shuffle=False,
+            num_workers=self.config.data.num_workers,
+            pin_memory=self.pin_memory,
+        )
 
 
 class DKTDataKFoldModule(DKTDataModule):
@@ -191,11 +274,11 @@ class DKTDataKFoldModule(DKTDataModule):
         self.train_data = None
         self.valid_data = None
         self.test_data = None
-    
+
     def prepare_data(self):
         pass
 
-    def setup(self, stage = None):
+    def setup(self, stage=None):
         if stage == "fit" or stage is None:
             pass
         if stage == "predict" or stage is None:
