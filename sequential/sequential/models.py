@@ -42,8 +42,20 @@ def set_logging(config: DictConfig) -> None:
                 "n_tags": config.model.n_tags,
             }
         )
+    elif config.model.model_name == "SAINT_PLUS":
+        wandb.log(
+            {
+                "n_encoder": config.model.n_encoder,
+                "n_decoder": config.model.n_decoder,
+                "embed_dims": config.model.embed_dims,
+                "n_tests": config.model.n_tests,
+                "n_questions": config.model.n_questions,
+                "n_tags": config.model.n_tags,
+                "n_test_types": config.model.n_test_types,
+            }
+        )
 
-    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR"]:
+    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR", "SAINT_PLUS"]:
         wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
 
     if config.model.model_name in ["LQRT"]:
@@ -358,9 +370,9 @@ class DecoderEmbedding(nn.Module):
         return embed_response + embed_prior_solving_time + embed_pos
 
 
-class SAINTPLUS(pl.LightningModule):
+class SAINTPLUS(LightningClass):
     def __init__(self, config):
-        super(SAINTPLUS, self).__init__()
+        super().__init__(config)
 
         self.config = config
         self.seq_len = self.config.data.max_seq_len
@@ -369,7 +381,7 @@ class SAINTPLUS(pl.LightningModule):
         self.n_tags = self.config.model.n_tags
         self.n_test_types = self.config.model.n_test_types
 
-        self.dropout = self.config.model.dropout
+        self.drop_out = self.config.model.drop_out
         self.n_heads = self.config.model.n_heads
         self.n_encoder = self.config.model.n_decoder
         self.n_decoder = self.config.model.n_decoder
@@ -397,7 +409,7 @@ class SAINTPLUS(pl.LightningModule):
             num_encoder_layers=self.n_decoder,
             num_decoder_layers=self.n_decoder,
             dim_feedforward=self.ffn_dim,
-            dropout=self.dropout,
+            dropout=self.drop_out,
             batch_first=True,
         )
 
@@ -443,106 +455,6 @@ class SAINTPLUS(pl.LightningModule):
         # fully connected layer
         out = self.fc(decoder_output)
         return out.squeeze()
-
-    # Compute loss
-    def compute_loss(self, preds: torch.Tensor, targets: torch.Tensor):
-        loss = nn.BCEWithLogitsLoss(reduction="none")
-        loss_val = loss(preds, targets.float())
-
-        # using only last seq
-        loss_val = loss_val[:, -1]
-        loss_val = torch.mean(loss_val)
-        return loss_val
-
-    # Set optimizer, scheduler
-    def configure_optimizers(self):
-        optimizer = get_optimizer(param=self.parameters(), config=self.config)
-        scheduler = get_scheduler(optimizer=optimizer, config=self.config)
-
-        if self.config.trainer.scheduler == "plateau":
-            return [optimizer], [
-                {
-                    "scheduler": scheduler,
-                    "interval": "epoch",
-                    "frequency": 1,
-                    "monitor": "val_auc",
-                    "name": "seq_lr_scheduler",
-                }
-            ]
-        else:
-            return [optimizer], [
-                {
-                    "scheduler": scheduler,
-                    "interval": "epoch",
-                    "frequency": 1,
-                    "name": "seq_lr_scheduler",
-                }
-            ]
-
-    def training_step(self, batch, batch_ids):
-        output = self(**batch)  # predict
-        target = batch["correct"]
-        loss = self.compute_loss(output, target)  # loss
-
-        pred = F.sigmoid(output[:, -1])
-        target = target[:, -1]
-
-        auc, acc = get_metric(targets=target, preds=pred)
-        metrics = {
-            "tr_loss": loss,
-            "tr_auc": torch.tensor(auc),
-            "tr_acc": torch.tensor(acc),
-        }
-        self.training_step_outputs.append(metrics)
-
-        return loss
-
-    def on_train_epoch_end(self):
-        avg_loss = torch.stack([x["tr_loss"] for x in self.training_step_outputs]).mean()
-        avg_auc = torch.stack([x["tr_auc"] for x in self.training_step_outputs]).mean()
-        avg_acc = torch.stack([x["tr_acc"] for x in self.training_step_outputs]).mean()
-
-        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"tr_loss": avg_loss, "tr_auc": avg_auc, "tr_acc": avg_acc})
-
-        self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
-        self.training_step_outputs.clear()
-
-    def validation_step(self, batch, batch_idx):
-        output = self(**batch)  # predict
-        target = batch["correct"]
-        loss = self.compute_loss(output, target)  # loss
-
-        pred = F.sigmoid(output[:, -1])
-        target = target[:, -1]
-
-        auc, acc = get_metric(targets=target, preds=pred)
-        metrics = {
-            "val_loss": loss,
-            "val_auc": torch.tensor(auc),
-            "val_acc": torch.tensor(acc),
-        }
-        self.validation_step_outputs.append(metrics)
-
-        return metrics
-
-    def on_validation_epoch_end(self):
-        avg_loss = torch.stack([x["val_loss"] for x in self.validation_step_outputs]).mean()
-        avg_auc = torch.stack([x["val_auc"] for x in self.validation_step_outputs]).mean()
-        avg_acc = torch.stack([x["val_acc"] for x in self.validation_step_outputs]).mean()
-
-        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
-        self.log("val_auc", avg_auc)
-
-        self.val_result.append({"val_avg_auc": avg_auc, "val_avg_acc": avg_acc})
-        self.validation_step_outputs.clear()
-
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        output = self(**batch)  # predict
-        pred = F.sigmoid(output[:, -1])
-        pred = pred.cpu().detach().numpy()
-        return pred
 
 
 class Feed_Forward_bolck(nn.Module):

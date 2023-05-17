@@ -4,7 +4,7 @@ n_encoder: 2
 n_decoder: 2
 n_heads: 2
 embed_dims: 64
-dropout: 0.1
+drop_out: 0.1
 
 n_tests: 1538
 n_questions: 9455
