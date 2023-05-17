@@ -118,15 +118,11 @@ class ModelBase(pl.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
-        avg_loss = torch.stack(
-            [x["tr_loss"] for x in self.training_step_outputs]
-        ).mean()
+        avg_loss = torch.stack([x["tr_loss"] for x in self.training_step_outputs]).mean()
         avg_auc = torch.stack([x["tr_auc"] for x in self.training_step_outputs]).mean()
         avg_acc = torch.stack([x["tr_acc"] for x in self.training_step_outputs]).mean()
 
-        logger.info(
-            f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"tr_loss": avg_loss, "tr_auc": avg_auc, "tr_acc": avg_acc})
 
         self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
@@ -151,19 +147,11 @@ class ModelBase(pl.LightningModule):
         return metrics
 
     def on_validation_epoch_end(self):
-        avg_loss = torch.stack(
-            [x["val_loss"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_auc = torch.stack(
-            [x["val_auc"] for x in self.validation_step_outputs]
-        ).mean()
-        avg_acc = torch.stack(
-            [x["val_acc"] for x in self.validation_step_outputs]
-        ).mean()
+        avg_loss = torch.stack([x["val_loss"] for x in self.validation_step_outputs]).mean()
+        avg_auc = torch.stack([x["val_auc"] for x in self.validation_step_outputs]).mean()
+        avg_acc = torch.stack([x["val_acc"] for x in self.validation_step_outputs]).mean()
 
-        logger.info(
-            f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
-        )
+        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
         wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
         self.log("val_auc", avg_auc)
 
@@ -180,9 +168,7 @@ class ModelBase(pl.LightningModule):
 class LSTM(ModelBase):
     def __init__(self, config):
         super().__init__(config)
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
     def forward(self, test, question, tag, correct, mask, interaction):
         X, batch_size = super().forward(
@@ -204,9 +190,7 @@ class LSTMATTN(ModelBase):
         super().__init__(config)
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
         self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
@@ -302,17 +286,11 @@ class LQTR(ModelBase):
         self.embedding_position = nn.Embedding(self.max_seq_len, self.hidden_dim)
 
         # Transformer Encoder
-        self.query = nn.Linear(
-            in_features=self.hidden_dim, out_features=self.hidden_dim
-        )
+        self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
         self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
-        self.value = nn.Linear(
-            in_features=self.hidden_dim, out_features=self.hidden_dim
-        )
+        self.value = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
 
-        self.attn = nn.MultiheadAttention(
-            embed_dim=self.hidden_dim, num_heads=self.n_heads
-        )
+        self.attn = nn.MultiheadAttention(embed_dim=self.hidden_dim, num_heads=self.n_heads)
         self.mask = None
         self.ffn = Feed_Forward_bolck(self.hidden_dim)
 
@@ -320,9 +298,7 @@ class LQTR(ModelBase):
         self.ln2 = nn.LayerNorm(self.hidden_dim)
 
         # LSTM
-        self.lstm = nn.LSTM(
-            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
-        )
+        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
     def init_hidden(self, batch_size):
         h = torch.zeros(self.n_layers, batch_size, self.hidden_dim)

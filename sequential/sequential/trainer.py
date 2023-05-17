@@ -39,9 +39,7 @@ class Trainer:
             wandb.save(f"./configs/model/LQTR.yaml")
             return LQTR(self.config)
         else:
-            raise Exception(
-                f"Wrong model name is used : {self.config.model.model_name}"
-            )
+            raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
     def train(self):
         self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch)
@@ -62,9 +60,7 @@ class Trainer:
         submit_df = submit_df.reset_index()
         submit_df.columns = ["id", "prediction"]
 
-        file_name = (
-            self.config.wandb.name + "_" + self.config.model.model_name + "_submit.csv"
-        )
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_submit.csv"
 
         write_path = os.path.join(self.config.paths.output_path, file_name)
         os.makedirs(name=self.config.paths.output_path, exist_ok=True)
@@ -83,7 +79,9 @@ class KfoldTrainer(Trainer):
 
     def cv(self):
         kf = KFold(
-            n_splits=self.config.trainer.k, random_state=self.config.seed, shuffle=True
+            n_splits=self.config.trainer.k,
+            random_state=self.config.seed,
+            shuffle=True,
         )
 
         # load original data and groupby user and preprocessing
@@ -94,9 +92,7 @@ class KfoldTrainer(Trainer):
         # load train dataset
         tr_dataset = self.dm.train_data
         val_dastaset = self.dm.valid_data
-        tr_dataset = np.concatenate(
-            (tr_dataset, val_dastaset), axis=0
-        )  # concat for k-fold cv
+        tr_dataset = np.concatenate((tr_dataset, val_dastaset), axis=0)  # concat for k-fold cv
         test_dataset = self.dm.test_data
 
         # K-fold Cross Validation
@@ -123,18 +119,10 @@ class KfoldTrainer(Trainer):
                 len(self.fold_model.tr_result),
                 len(self.fold_model.val_result),
             )
-            tr_auc = torch.stack(
-                [x["tr_avg_auc"] for x in self.fold_model.tr_result]
-            ).mean()
-            tr_acc = torch.stack(
-                [x["tr_avg_acc"] for x in self.fold_model.tr_result]
-            ).mean()
-            val_auc = torch.stack(
-                [x["val_avg_auc"] for x in self.fold_model.val_result]
-            ).mean()
-            val_acc = torch.stack(
-                [x["val_avg_acc"] for x in self.fold_model.val_result]
-            ).mean()
+            tr_auc = torch.stack([x["tr_avg_auc"] for x in self.fold_model.tr_result]).mean()
+            tr_acc = torch.stack([x["tr_avg_acc"] for x in self.fold_model.tr_result]).mean()
+            val_auc = torch.stack([x["val_avg_auc"] for x in self.fold_model.val_result]).mean()
+            val_acc = torch.stack([x["val_avg_acc"] for x in self.fold_model.val_result]).mean()
 
             print(
                 f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}"
@@ -148,9 +136,7 @@ class KfoldTrainer(Trainer):
 
     def cv_predict(self, fold: int):
         logger.info("Making Prediction ...")
-        predictions = self.fold_trainer.predict(
-            self.fold_model, datamodule=self.fold_dm
-        )
+        predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.fold_dm)
 
         logger.info("Saving Submission ...")
         predictions = np.concatenate(predictions)
@@ -177,9 +163,7 @@ class KfoldTrainer(Trainer):
 
     def oof(self):
         # load sample files
-        sample_path = os.path.join(
-            self.config.paths.data_path, self.config.paths.sample_file
-        )
+        sample_path = os.path.join(self.config.paths.data_path, self.config.paths.sample_file)
         submit_df = pd.read_csv(sample_path)
 
         # load all submission csv files

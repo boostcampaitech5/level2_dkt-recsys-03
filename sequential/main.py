@@ -30,7 +30,9 @@ def main(config: DictConfig = None) -> None:
     wandb.login(key=WANDB_API_KEY)
 
     run = wandb.init(
-        project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name
+        project=config.wandb.project,
+        entity=config.wandb.entity,
+        name=config.wandb.name,
     )
     run.tags = [config.model.model_name, config.trainer.cv_strategy]
     wandb.save(f"./configs/config.yaml")
