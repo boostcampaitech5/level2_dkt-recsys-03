@@ -48,58 +48,10 @@ def set_logging(config: DictConfig) -> None:
         wandb.log({"POS": config.model.POS})
 
 
-class ModelBase(pl.LightningModule):
-    def __init__(self, config):
-        super(ModelBase, self).__init__()
-
+class LightningClass(pl.LightningModule):
+    def __init__(self, config: DictConfig):
+        super(LightningClass, self).__init__()
         self.config = config
-        self.hidden_dim = self.config.model.hidden_dim
-        self.n_layers = self.config.model.n_layers
-        self.n_tests = self.config.model.n_tests
-        self.n_questions = self.config.model.n_questions
-        self.n_tags = self.config.model.n_tags
-
-        # Embedding
-        hd, intd = self.hidden_dim, self.hidden_dim // 3
-        self.embedding_interaction = nn.Embedding(3, intd)
-        self.embedding_test = nn.Embedding(self.n_tests + 1, intd)
-        self.embedding_question = nn.Embedding(self.n_questions + 1, intd)
-        self.embedding_tag = nn.Embedding(self.n_tags + 1, intd)
-
-        # Concat embedding projection
-        self.comb_proj = nn.Linear(intd * 4, hd)
-
-        # Fully connected layer
-        self.fc = nn.Linear(hd, 1)
-
-        # wandb logging
-        set_logging(self.config)
-
-        self.training_step_outputs = []
-        self.validation_step_outputs = []
-        self.test_step_outputs = []
-
-        self.tr_result = []
-        self.val_result = []
-
-    def forward(self, test, question, tag, correct, mask, interaction):
-        batch_size = interaction.size(0)
-
-        embed_interaction = self.embedding_interaction(interaction.int())
-        embed_test = self.embedding_test(test.int())
-        embed_question = self.embedding_question(question.int())
-        embed_tag = self.embedding_tag(tag.int())
-        embed = torch.cat(
-            [
-                embed_interaction,
-                embed_test,
-                embed_question,
-                embed_tag,
-            ],
-            dim=2,
-        )
-        X = self.comb_proj(embed)
-        return X, batch_size
 
     # Compute loss using Binary Cross Entropy loss
     def compute_loss(self, preds: torch.Tensor, targets: torch.Tensor):
@@ -200,6 +152,60 @@ class ModelBase(pl.LightningModule):
         pred = F.sigmoid(output[:, -1])
         pred = pred.cpu().detach().numpy()
         return pred
+
+
+class ModelBase(LightningClass):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.config = config
+        self.hidden_dim = self.config.model.hidden_dim
+        self.n_layers = self.config.model.n_layers
+        self.n_tests = self.config.model.n_tests
+        self.n_questions = self.config.model.n_questions
+        self.n_tags = self.config.model.n_tags
+
+        # Embedding
+        hd, intd = self.hidden_dim, self.hidden_dim // 3
+        self.embedding_interaction = nn.Embedding(3, intd)
+        self.embedding_test = nn.Embedding(self.n_tests + 1, intd)
+        self.embedding_question = nn.Embedding(self.n_questions + 1, intd)
+        self.embedding_tag = nn.Embedding(self.n_tags + 1, intd)
+
+        # Concat embedding projection
+        self.comb_proj = nn.Linear(intd * 4, hd)
+
+        # Fully connected layer
+        self.fc = nn.Linear(hd, 1)
+
+        # wandb logging
+        set_logging(self.config)
+
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+
+        self.tr_result = []
+        self.val_result = []
+
+    def forward(self, test, question, tag, correct, mask, interaction):
+        batch_size = interaction.size(0)
+
+        embed_interaction = self.embedding_interaction(interaction.int())
+        embed_test = self.embedding_test(test.int())
+        embed_question = self.embedding_question(question.int())
+        embed_tag = self.embedding_tag(tag.int())
+        embed = torch.cat(
+            [
+                embed_interaction,
+                embed_test,
+                embed_question,
+                embed_tag,
+            ],
+            dim=2,
+        )
+        X = self.comb_proj(embed)
+        return X, batch_size
 
 
 class LSTM(ModelBase):
