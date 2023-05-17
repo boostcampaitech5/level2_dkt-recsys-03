@@ -331,7 +331,7 @@ class LQTR(ModelBase):
             embed_pos = self.embedding_position(position)
             X = X + embed_pos
 
-        #################### Encoder ###################
+        # Encoder
 
         q = self.query(X).permute(1, 0, 2)
         q = self.query(X)[:, -1:, :].permute(1, 0, 2)
@@ -339,7 +339,7 @@ class LQTR(ModelBase):
         k = self.key(X).permute(1, 0, 2)
         v = self.value(X).permute(1, 0, 2)
 
-        #################### Attention ###################
+        # Attention
 
         # last query only
         out, _ = self.attn(q, k, v)
@@ -356,12 +356,12 @@ class LQTR(ModelBase):
         out = X + out
         out = self.ln2(out)
 
-        ###################### LSTM ####################
+        # LSTM
 
         hidden = self.init_hidden(batch_size)
         out, hidden = self.lstm(out, hidden)
 
-        ###################### DNN #####################
+        # DNN
 
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
