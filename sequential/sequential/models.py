@@ -2,6 +2,7 @@ import torch
 import wandb
 import torch.nn as nn
 import pytorch_lightning as pl
+from omegaconf import DictConfig
 from torch.nn import functional as F
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
 
@@ -12,6 +13,39 @@ from .optimizer import get_optimizer
 
 
 logger = get_logger(logging_conf)
+
+
+def set_logging(config: DictConfig) -> None:
+    wandb.log({"batch_size": config.data.batch_size, "max_seq_len": config.data.max_seq_len})
+
+    wandb.log(
+        {
+            "epoch": config.trainer.epoch,
+            "optimizer": config.trainer.optimizer,
+            "lr": config.trainer.lr,
+            "weight_decay": config.trainer.weight_decay,
+            "scheduler": config.trainer.scheduler,
+        }
+    )
+
+    wandb.log({"model_name": config.model.model_name})
+
+    if config.model.model_name in ["LSTM", "LSTMATTN", "BERT", "LQTR"]:
+        wandb.log(
+            {
+                "hidden_dim": config.model.hidden_dim,
+                "n_layers": config.model.n_layers,
+                "n_tests": config.model.n_tests,
+                "n_questions": config.model.n_questions,
+                "n_tags": config.model.n_tags,
+            }
+        )
+
+    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR"]:
+        wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
+
+    if config.model.model_name in ["LQRT"]:
+        wandb.log({"POS": config.model.POS})
 
 
 class ModelBase(pl.LightningModule):
@@ -37,6 +71,9 @@ class ModelBase(pl.LightningModule):
 
         # Fully connected layer
         self.fc = nn.Linear(hd, 1)
+
+        # wandb logging
+        set_logging(self.config)
 
         self.training_step_outputs = []
         self.validation_step_outputs = []
