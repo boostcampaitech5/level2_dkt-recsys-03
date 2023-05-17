@@ -40,7 +40,7 @@ class ModelBase(pl.LightningModule):
 
         self.training_step_outputs = []
         self.validation_step_outputs = []
-        self.test_step_outputs= []
+        self.test_step_outputs = []
 
         self.tr_result = []
         self.val_result = []
@@ -80,63 +80,98 @@ class ModelBase(pl.LightningModule):
         scheduler = get_scheduler(optimizer=optimizer, config=self.config)
 
         if self.config.trainer.scheduler == "plateau":
-            return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "monitor": "val_auc", "name": "seq_lr_scheduler"}]
+            return [optimizer], [
+                {
+                    "scheduler": scheduler,
+                    "interval": "epoch",
+                    "frequency": 1,
+                    "monitor": "val_auc",
+                    "name": "seq_lr_scheduler",
+                }
+            ]
         else:
-            return [optimizer], [{"scheduler": scheduler, "interval": "epoch", "frequency": 1, "name": "seq_lr_scheduler"}]
-    
+            return [optimizer], [
+                {
+                    "scheduler": scheduler,
+                    "interval": "epoch",
+                    "frequency": 1,
+                    "name": "seq_lr_scheduler",
+                }
+            ]
+
     def training_step(self, batch, batch_idx):
-        output = self(**batch) # predict
+        output = self(**batch)  # predict
         target = batch["correct"]
-        loss = self.compute_loss(output, target) # loss
+        loss = self.compute_loss(output, target)  # loss
 
         pred = F.sigmoid(output[:, -1])
         target = target[:, -1]
 
         auc, acc = get_metric(targets=target, preds=pred)
-        metrics = {"tr_loss" : loss, "tr_auc" : torch.tensor(auc), "tr_acc" : torch.tensor(acc)}
+        metrics = {
+            "tr_loss": loss,
+            "tr_auc": torch.tensor(auc),
+            "tr_acc": torch.tensor(acc),
+        }
         self.training_step_outputs.append(metrics)
 
         return loss
 
     def on_train_epoch_end(self):
-        avg_loss = torch.stack([x['tr_loss'] for x in self.training_step_outputs]).mean()
-        avg_auc = torch.stack([x['tr_auc'] for x in self.training_step_outputs]).mean()
-        avg_acc = torch.stack([x['tr_acc'] for x in self.training_step_outputs]).mean()
+        avg_loss = torch.stack(
+            [x["tr_loss"] for x in self.training_step_outputs]
+        ).mean()
+        avg_auc = torch.stack([x["tr_auc"] for x in self.training_step_outputs]).mean()
+        avg_acc = torch.stack([x["tr_acc"] for x in self.training_step_outputs]).mean()
 
-        logger.info(f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"tr_loss" : avg_loss, "tr_auc" : avg_auc, "tr_acc" : avg_acc})
+        logger.info(
+            f"[Train] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
+        )
+        wandb.log({"tr_loss": avg_loss, "tr_auc": avg_auc, "tr_acc": avg_acc})
 
         self.tr_result.append({"tr_avg_auc": avg_auc, "tr_avg_acc": avg_acc})
         self.training_step_outputs.clear()
-    
+
     def validation_step(self, batch, batch_idx):
-        output = self(**batch) # predict
+        output = self(**batch)  # predict
         target = batch["correct"]
-        loss = self.compute_loss(output, target) # loss
+        loss = self.compute_loss(output, target)  # loss
 
         pred = F.sigmoid(output[:, -1])
         target = target[:, -1]
 
         auc, acc = get_metric(targets=target, preds=pred)
-        metrics = {"val_loss" : loss, "val_auc" : torch.tensor(auc), "val_acc" : torch.tensor(acc)}
+        metrics = {
+            "val_loss": loss,
+            "val_auc": torch.tensor(auc),
+            "val_acc": torch.tensor(acc),
+        }
         self.validation_step_outputs.append(metrics)
 
         return metrics
 
     def on_validation_epoch_end(self):
-        avg_loss = torch.stack([x['val_loss'] for x in self.validation_step_outputs]).mean()
-        avg_auc = torch.stack([x['val_auc'] for x in self.validation_step_outputs]).mean()
-        avg_acc = torch.stack([x['val_acc'] for x in self.validation_step_outputs]).mean()
+        avg_loss = torch.stack(
+            [x["val_loss"] for x in self.validation_step_outputs]
+        ).mean()
+        avg_auc = torch.stack(
+            [x["val_auc"] for x in self.validation_step_outputs]
+        ).mean()
+        avg_acc = torch.stack(
+            [x["val_acc"] for x in self.validation_step_outputs]
+        ).mean()
 
-        logger.info(f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}")
-        wandb.log({"val_loss" : avg_loss, "val_auc" : avg_auc, "val_acc" : avg_acc})
+        logger.info(
+            f"[Valid] avg_loss: {avg_loss}, avg_auc: {avg_auc}, avg_acc: {avg_acc}"
+        )
+        wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
         self.log("val_auc", avg_auc)
 
         self.val_result.append({"val_avg_auc": avg_auc, "val_avg_acc": avg_acc})
         self.validation_step_outputs.clear()
-    
+
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        output = self(**batch) # predict
+        output = self(**batch)  # predict
         pred = F.sigmoid(output[:, -1])
         pred = pred.cpu().detach().numpy()
         return pred
@@ -145,15 +180,19 @@ class ModelBase(pl.LightningModule):
 class LSTM(ModelBase):
     def __init__(self, config):
         super().__init__(config)
-        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
+        self.lstm = nn.LSTM(
+            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
+        )
 
     def forward(self, test, question, tag, correct, mask, interaction):
-        X, batch_size = super().forward(test=test,
-                                        question=question,
-                                        tag=tag,
-                                        correct=correct,
-                                        mask=mask,
-                                        interaction=interaction)
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
         out, _ = self.lstm(X)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
@@ -161,11 +200,13 @@ class LSTM(ModelBase):
 
 
 class LSTMATTN(ModelBase):
-    def __init__(self,config):
+    def __init__(self, config):
         super().__init__(config)
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
-        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
+        self.lstm = nn.LSTM(
+            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
+        )
         self.bert_config = BertConfig(
             3,  # not used
             hidden_size=self.hidden_dim,
@@ -178,16 +219,17 @@ class LSTMATTN(ModelBase):
         self.attn = BertEncoder(self.bert_config)
 
     def forward(self, test, question, tag, correct, mask, interaction):
-        X, batch_size = super().forward(test=test,
-                                        question=question,
-                                        tag=tag,
-                                        correct=correct,
-                                        mask=mask,
-                                        interaction=interaction)
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
 
         out, _ = self.lstm(X)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
-
 
         # Adding Attention
         extended_attention_mask = mask.unsqueeze(1).unsqueeze(2)
@@ -203,7 +245,7 @@ class LSTMATTN(ModelBase):
 
 
 class BERT(ModelBase):
-    def __init__(self,config):
+    def __init__(self, config):
         super().__init__(config)
         self.n_heads = self.config.model.n_heads
         self.drop_out = self.config.model.drop_out
@@ -219,15 +261,133 @@ class BERT(ModelBase):
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
     def forward(self, test, question, tag, correct, mask, interaction):
-        X, batch_size = super().forward(test=test,
-                                        question=question,
-                                        tag=tag,
-                                        correct=correct,
-                                        mask=mask,
-                                        interaction=interaction)
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
 
         encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)
         out = encoded_layers[0]
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
+        return out
+
+
+class Feed_Forward_bolck(nn.Module):
+    """
+    res = Relu( M_out * w1 + b1 ) * w2 + b2
+    """
+
+    def __init__(self, dim_ffn):
+        super().__init__()
+        self.layer1 = nn.Linear(in_features=dim_ffn, out_features=dim_ffn)
+        self.layer2 = nn.Linear(in_features=dim_ffn, out_features=dim_ffn)
+
+    def forward(self, ffn_in):
+        return self.layer2(F.relu(self.layer1(ffn_in)))
+
+
+class LQTR(ModelBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.max_seq_len = self.config.data.max_seq_len
+
+        # POS embedding
+        self.embedding_position = nn.Embedding(self.max_seq_len, self.hidden_dim)
+
+        # Transformer Encoder
+        self.query = nn.Linear(
+            in_features=self.hidden_dim, out_features=self.hidden_dim
+        )
+        self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
+        self.value = nn.Linear(
+            in_features=self.hidden_dim, out_features=self.hidden_dim
+        )
+
+        self.attn = nn.MultiheadAttention(
+            embed_dim=self.hidden_dim, num_heads=self.n_heads
+        )
+        self.mask = None
+        self.ffn = Feed_Forward_bolck(self.hidden_dim)
+
+        self.ln1 = nn.LayerNorm(self.hidden_dim)
+        self.ln2 = nn.LayerNorm(self.hidden_dim)
+
+        # LSTM
+        self.lstm = nn.LSTM(
+            self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
+        )
+
+    def init_hidden(self, batch_size):
+        h = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
+        h = h.to(self.device)
+
+        c = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
+        c = c.to(self.device)
+
+        return (h, c)
+
+    def get_pos(self, seq_len):
+        # use sine positional embeddinds
+        return torch.arange(seq_len).unsqueeze(0)
+
+    def forward(self, test, question, tag, correct, mask, interaction):
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
+
+        seq_len = interaction.size(1)
+
+        # case : POS embedding use
+        if self.config.model.POS:
+            position = self.get_pos(seq_len).to("cuda")
+            embed_pos = self.embedding_position(position)
+            X = X + embed_pos
+
+        #################### Encoder ###################
+
+        q = self.query(X).permute(1, 0, 2)
+        q = self.query(X)[:, -1:, :].permute(1, 0, 2)
+
+        k = self.key(X).permute(1, 0, 2)
+        v = self.value(X).permute(1, 0, 2)
+
+        #################### Attention ###################
+
+        # last query only
+        out, _ = self.attn(q, k, v)
+
+        # residual + Layer Norm
+        out = out.permute(1, 0, 2)
+        out = X + out
+        out = self.ln1(out)
+
+        # FFN
+        out = self.ffn(out)
+
+        # residual + Layer Norm
+        out = X + out
+        out = self.ln2(out)
+
+        ###################### LSTM ####################
+
+        hidden = self.init_hidden(batch_size)
+        out, hidden = self.lstm(out, hidden)
+
+        ###################### DNN #####################
+
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out).view(batch_size, -1)
+
         return out
