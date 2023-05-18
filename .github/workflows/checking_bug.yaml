@@ -17,6 +17,11 @@ jobs:
       uses: actions/setup-python@v4 
       with: 
         python-version: '3.10' 
+      
+    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+      run: |
+        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        tar -zxvf data.tar.gz -C ~/input/data
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -39,6 +44,11 @@ jobs:
       uses: actions/setup-python@v4 
       with: 
         python-version: '3.10' 
+
+    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+      run: |
+        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        tar -zxvf data.tar.gz -C ~/input/data
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
