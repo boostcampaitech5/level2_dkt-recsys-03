@@ -2,7 +2,7 @@
 
 ## Setup
 ```bash
-cd /opt/ml/input/level2_dkt-recsys-03/graph
+cd ~/input/level2_dkt-recsys-03/graph
 conda init
 (base) . ~/.bashrc
 (base) conda create -n graph python=3.10 -y
