@@ -1,0 +1,14 @@
+# batch size of DataLoader
+batch_size: 64
+
+# number of gpu workers
+num_workers: 4
+
+# max sequence length
+max_seq_len: 2
+
+# whether to use augmentation
+augmentation : False
+
+# stride for data augmentation
+# stride : 10000

@@ -1,0 +1,7 @@
+model_name: LSTM
+
+hidden_dim: 3
+n_layers: 1
+n_tests: 1538
+n_questions: 9455
+n_tags: 913

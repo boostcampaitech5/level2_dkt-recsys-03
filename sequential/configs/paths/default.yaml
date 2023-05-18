@@ -1,5 +1,5 @@
 # path to data directory
-data_path: /opt/ml/input/data/
+data_path: ~/input/data/
 # path to asset directory
 asset_path: asset/
 # path to output directory

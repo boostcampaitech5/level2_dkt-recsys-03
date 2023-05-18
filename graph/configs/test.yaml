@@ -1,0 +1,11 @@
+seed: 42
+timestamp: 
+
+defaults:
+  - _self_
+  - model: LightGCN.yaml
+  - data: default.yaml
+  - paths: default.yaml
+  - trainer: test.yaml
+  - wandb: default.yaml
+  - sweep: default.yaml

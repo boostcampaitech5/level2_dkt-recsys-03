@@ -1,0 +1,9 @@
+model_name: GRUATTN
+
+hidden_dim: 3
+n_layers: 1
+n_tests: 1538
+n_questions: 9455
+n_tags: 913
+n_heads: 1
+drop_out: 0.1

@@ -16,8 +16,7 @@ from sequential.trainer import Trainer, KfoldTrainer
 logger = get_logger(logging_conf)
 
 
-@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config: DictConfig = None) -> None:
+def __main(config: DictConfig = None) -> None:
     # setting
     print(f"----------------- Setting -----------------")
     config.timestamp = get_timestamp()
@@ -49,6 +48,11 @@ def main(config: DictConfig = None) -> None:
         raise NotImplementedError
 
     wandb.finish()
+
+
+@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
+def main(config: DictConfig = None) -> None:
+    __main(config)
 
 
 if __name__ == "__main__":

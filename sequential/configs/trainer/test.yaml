@@ -1,0 +1,23 @@
+# cross validation strategy
+cv_strategy: kfold
+
+# k value of k-fold cross validation
+k: 2
+
+# epoch for training
+epoch: 1
+
+# optimizer
+optimizer: adam
+
+# learning rate
+lr: 0.0001
+
+# weight_decay for learning rate
+weight_decay: 0.01
+
+# learning rate scheduler
+scheduler: plateau
+
+# early stopping patience
+patience: 1
