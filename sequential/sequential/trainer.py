@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
@@ -45,7 +46,8 @@ class Trainer:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
     def train(self):
-        self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch)
+        early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
+        self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
 
         self.dm = self.load_data()
         self.model = self.load_model()
@@ -100,14 +102,13 @@ class KfoldTrainer(Trainer):
 
         # K-fold Cross Validation
         for fold, (tra_idx, val_idx) in enumerate(kf.split(tr_dataset)):
-            print(
-                f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------"
-            )
+            print(f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------")
 
             # create model for cv
             self.fold_model = self.load_model()
             # set data for training and validation in fold
-            self.fold_trainer = pl.Trainer(max_epochs=self.config.trainer.epoch)
+            early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
+            self.fold_trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
 
             self.fold_dm = DKTDataKFoldModule(self.config)
             self.fold_dm.train_data = tr_dataset[tra_idx]
@@ -127,9 +128,7 @@ class KfoldTrainer(Trainer):
             val_auc = torch.stack([x["val_avg_auc"] for x in self.fold_model.val_result]).mean()
             val_acc = torch.stack([x["val_avg_acc"] for x in self.fold_model.val_result]).mean()
 
-            print(
-                f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}"
-            )
+            print(f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}")
             self.cv_score += val_auc / self.config.trainer.k
             self.cv_predict(fold)
 
@@ -147,14 +146,7 @@ class KfoldTrainer(Trainer):
         submit_df = submit_df.reset_index()
         submit_df.columns = ["id", "prediction"]
 
-        file_name = (
-            self.config.wandb.name
-            + "_"
-            + self.config.model.model_name
-            + "_"
-            + str(fold)
-            + "_submit.csv"
-        )
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         self.result_csv_list.append(write_path)
 
@@ -181,13 +173,7 @@ class KfoldTrainer(Trainer):
         submit_df["prediction"] = pd.DataFrame(test_prob)
 
         # file saving
-        file_name = (
-            self.config.wandb.name
-            + "_"
-            + self.config.model.model_name
-            + str(self.config.trainer.k)
-            + "final_submit.csv"
-        )
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         os.makedirs(name=self.config.paths.output_path, exist_ok=True)
 
