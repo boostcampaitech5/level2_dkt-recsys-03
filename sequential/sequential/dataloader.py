@@ -1,12 +1,14 @@
 import os
 import time
+import wandb
 import torch
 import random
 import numpy as np
 import pandas as pd
+from collections import Counter
+from tqdm import tqdm
 from datetime import datetime
 import pytorch_lightning as pl
-
 from torch.utils.data import DataLoader, Dataset
 from omegaconf import DictConfig
 from sklearn.preprocessing import LabelEncoder
@@ -51,7 +53,7 @@ class DKTDataset(Dataset):
                 data[k] = tmp
             mask = torch.zeros(self.max_seq_len, dtype=torch.int16)
             mask[-seq_len:] = 1
-        data["mask"] = mask.int()
+        data["mask"] = mask
 
         # generate interaction
         interaction = data["correct"] + 1  # plus 1 for padding
@@ -90,9 +92,7 @@ class DKTDataModule(pl.LightningDataModule):
         if is_train:
             self.df["testType"] = self.df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
         else:
-            self.test_df["testType"] = (
-                self.test_df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
-            )
+            self.test_df["testType"] = self.test_df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
 
         cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "testType"]
 
@@ -118,9 +118,7 @@ class DKTDataModule(pl.LightningDataModule):
                 self.df[col] = test
             else:
                 le.classes_ = np.load(le_path)
-                self.test_df[col] = self.test_df[col].apply(
-                    lambda x: x if str(x) in le.classes_ else "unknown"
-                )
+                self.test_df[col] = self.test_df[col].apply(lambda x: x if str(x) in le.classes_ else "unknown")
 
                 self.test_df[col] = self.test_df[col].astype(str)
                 test = le.transform(self.test_df[col])
@@ -146,9 +144,7 @@ class DKTDataModule(pl.LightningDataModule):
             self.test_df["priorSolvingTime"] = t_prior_solving_time
 
     # split train data to train & valid : this part will be excahnged
-    def split_data(
-        self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42
-    ):
+    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
         seed = self.config.seed
         if shuffle:
             random.seed(seed)
@@ -158,12 +154,50 @@ class DKTDataModule(pl.LightningDataModule):
         self.train_data = data[:size]
         self.valid_data = data[size:]
 
+    def augemtation(self, data: pd.DataFrame) -> pd.DataFrame:
+        window_size = self.config.data.max_seq_len
+        stride = self.config.data.stride
+        wandb.log({"stride": stride})
+
+        data = data.sort_values(by=["userID", "Timestamp"], axis=0)
+
+        augmented_data = []
+        count_dict = Counter(data.userID)
+
+        n_id = 0
+        for id, cnt in tqdm(count_dict.items()):
+            seq = data[data.userID == id].reset_index(drop=True)
+            if cnt <= window_size:
+                seq["userID"] = n_id
+                augmented_data += seq.values.tolist()
+                n_id += 1
+            else:
+                total_window = ((cnt - window_size) // stride) + 1
+                for window_i in range(total_window):
+                    aug = seq.iloc[window_i * stride : window_i * stride + window_size, :]
+                    aug["userID"] = [n_id] * window_size
+                    augmented_data += aug.values.tolist()
+                    n_id += 1
+        augmented_data = pd.DataFrame(augmented_data, columns=data.columns)
+
+        return augmented_data
+
     # load and feature_engineering dataset
     def prepare_data(self):
         train_file_path = os.path.join(self.config.paths.data_path, self.config.paths.train_file)
         test_file_path = os.path.join(self.config.paths.data_path, self.config.paths.test_file)
 
-        self.df = pd.read_csv(train_file_path)
+        train = pd.read_csv(train_file_path)
+
+        if self.config.data.augmentation == True:
+            wandb.log({"augmentation": self.config.data.augmentation})
+            print("----------------- DATA AUGMENTATION -----------------")
+            before = train.userID.nunique()
+            self.df = self.augemtation(train)
+            print(f"before augmetation : {before}  after augmentation : {self.df.userID.nunique()}")
+        else:
+            self.df = train
+
         self.test_df = pd.read_csv(test_file_path)
         self.__feature_engineering()  # fill this func if needed
 
@@ -174,15 +208,9 @@ class DKTDataModule(pl.LightningDataModule):
         if stage == "predict" or stage is None:
             self.__preprocessing(is_train=False)
 
-        self.n_questions = len(
-            np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy"))
-        )
-        self.n_tests = len(
-            np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy"))
-        )
-        self.n_tags = len(
-            np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy"))
-        )
+        self.n_questions = len(np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy")))
+        self.n_tests = len(np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy")))
+        self.n_tags = len(np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy")))
 
         columns = [
             "userID",
