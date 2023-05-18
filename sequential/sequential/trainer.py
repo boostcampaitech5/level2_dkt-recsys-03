@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
 from .dataloader import DKTDataModule, DKTDataKFoldModule
-from .models import LSTM, LSTMATTN, BERT, LQTR, SAINTPLUS
+from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS
 from .utils import get_logger, logging_conf
 
 
@@ -33,8 +33,14 @@ class Trainer:
         elif self.config.model.model_name == "LSTMATTN":
             wandb.save(f"./configs/model/LSTMATTN.yaml")
             return LSTMATTN(self.config)
+        elif self.config.model.model_name == "GRUATTN":
+            wandb.save(f"./configs/model/GRUATTN.yaml")
+            return GRUATTN(self.config)
         elif self.config.model.model_name == "BERT":
             wandb.save(f"./configs/model/BERT.yaml")
+            return BERT(self.config)
+        elif self.config.model.model_name == "SASREC":
+            wandb.save(f"./configs/model/SASREC.yaml")
             return BERT(self.config)
         elif self.config.model.model_name == "LQTR":
             wandb.save(f"./configs/model/LQTR.yaml")

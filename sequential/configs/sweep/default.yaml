@@ -11,6 +11,12 @@ parameters:
     values: [LSTM, LSTMATTN, BERT, SAINT_PLUS]
   trainer.epoch:
     values: [10, 20, 30]
+  data.augmentation:
+    values: [True]
+  data.stride:
+    values: [100]
+  data.max_seq_len:
+    values: [100]
 
 command:
 - ${env}
