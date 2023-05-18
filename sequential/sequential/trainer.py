@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
@@ -51,7 +52,8 @@ class Trainer:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
     def train(self):
-        self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch)
+        early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
+        self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
 
         self.dm = self.load_data()
         self.model = self.load_model()
@@ -111,7 +113,8 @@ class KfoldTrainer(Trainer):
             # create model for cv
             self.fold_model = self.load_model()
             # set data for training and validation in fold
-            self.fold_trainer = pl.Trainer(max_epochs=self.config.trainer.epoch)
+            early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
+            self.fold_trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
 
             self.fold_dm = DKTDataKFoldModule(self.config)
             self.fold_dm.train_data = tr_dataset[tra_idx]
