@@ -39,4 +39,7 @@ python main.py
 ```
 
 ## Sweep
-* 추가 예정입니다
+```bash
+wandb sweep configs/sweep/default.yaml
+wandb agent recsys01/DKT_Sequential/{sweepid}
+```

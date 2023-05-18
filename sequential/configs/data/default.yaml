@@ -6,3 +6,9 @@ num_workers: 4
 
 # max sequence length
 max_seq_len: 20
+
+# whether to use augmentation
+augmentation : True
+
+# stride for data augmentation
+stride : 100

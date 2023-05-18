@@ -1,4 +1,5 @@
 import torch
+import wandb
 import lightning as L
 from omegaconf import DictConfig
 from torch_geometric.nn.models import LightGCN
@@ -16,19 +17,19 @@ class LightGCNNet(L.LightningModule):
         self.model = LightGCN(num_nodes=self.n_nodes, 
                               embedding_dim=self.embedding_dim, 
                               num_layers=self.num_layers)
+        
+        wandb.log({"num_nodes" : self.n_nodes, "embedding_dim" : self.embedding_dim, "num_layers" : self.num_layers})
+        self.training_step_outputs = []
     
     def forward(self, edge_index):
-        print("+++++++forward++++++++")
         pred = self.model.predict_link(edge_index=edge_index, prob=True)
         return pred
 
     def training_step(self, batch, batch_idx):
-        print("+++++++training step++++++++")
         edge_index, label = batch
         edge_index = edge_index.T
         pred = self(edge_index)
 
-        print("+++++++calculating loss++++++++++")
         loss = self.model.link_pred_loss(pred, label)
 
         label = label.cpu().numpy()
@@ -36,11 +37,21 @@ class LightGCNNet(L.LightningModule):
 
         acc = accuracy_score(y_true=label, y_pred=(pred > 0.5))
         auc = roc_auc_score(y_true=label, y_score=pred)
+        training_metrics = {"tr_loss" : loss, "tr_auc" : torch.tensor(auc), "tr_acc" : torch.tensor(acc)}
+        self.training_step_outputs.append(training_metrics)
 
         return {'auc':auc, 'acc':acc, 'loss':loss}
+    
+    def on_train_epoch_end(self):
+        avg_loss = torch.stack([x['tr_loss'] for x in self.training_step_outputs]).mean()
+        avg_auc = torch.stack([x['tr_auc'] for x in self.training_step_outputs]).mean()
+        avg_acc = torch.stack([x['tr_acc'] for x in self.training_step_outputs]).mean()
+
+        wandb.log({"tr_loss" : avg_loss, "tr_auc" : avg_auc, "tr_acc" : avg_acc})
+
+        self.training_step_outputs.clear()
             
     def predict_step(self, batch, batch_idx):
-        print("+++++++predict step++++++++")
         edge_index, _ = batch
         edge_index = edge_index.T
         pred = self.model.predict_link(edge_index=edge_index, prob=True)
@@ -48,7 +59,6 @@ class LightGCNNet(L.LightningModule):
         return pred
 
     def configure_optimizers(self):
-        print("+++++++config opt++++++++")
         if self.config.trainer.optimizer == "adam":
             optimizer = torch.optim.Adam(params = self.model.parameters(), 
                                          lr = self.config.trainer.lr)

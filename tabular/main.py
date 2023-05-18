@@ -9,51 +9,59 @@ from tabular.trainer import Trainer, CrossValidationTrainer
 
 
 @hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config: omegaconf.DictConfig=None) -> None:
+def main(config: omegaconf.DictConfig = None) -> None:
     # setting
-    print(f'--------------- Setting ---------------')
+    print("--------------- Setting ---------------")
     config.timestamp = get_timestamp()
-    config.wandb.name = f'work-{get_timestamp()}'
+    config.wandb.name = f"work-{config.timestamp}"
     seed_everything(config.seed)
-    
+
     # wandb init
     dotenv.load_dotenv()
-    WANDB_API_KEY = os.environ.get('WANDB_API_KEY')
+    WANDB_API_KEY = os.environ.get("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
-    run = wandb.init(project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name)
+    run = wandb.init(
+        project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name
+    )
     run.tags = [config.model.name, config.cv_strategy]
-    wandb.save(f"./configs/config.yaml")
-    wandb.save(f"./configs/model/LGBM.yaml")
-    
-    # setup datamodule
-    print(f'--------------- Setup datamodule ---------------')
-    datamodule = TabularDataModule(config)
-    datamodule.prepare_data()
-    datamodule.setup()
+    wandb.save("./configs/config.yaml")
+    wandb.save("./configs/model/LGBM.yaml")
 
-    if config.cv_strategy == 'holdout':
+    # setup datamodule
+    print("--------------- Setup datamodule ---------------")
+    datamodule = TabularDataModule(config)
+    # process data
+    if config.skip_data_processing:
+        print("Skip data processing, just load data files")
+        datamodule.shortcut()
+    else:
+        datamodule.prepare_data()
+        datamodule.setup()
+    wandb.run.summary["data_dir"] = config.paths.data_dir
+
+    if config.cv_strategy == "holdout":
         # trainer
         trainer = Trainer(config, datamodule)
         # train
-        print(f'--------------- Training ---------------')
+        print("--------------- Training ---------------")
         trainer.train()
         # inference
-        print(f'--------------- Inference ---------------')
+        print("--------------- Inference ---------------")
         trainer.inference()
-    
-    elif config.cv_strategy == 'kfold':
+
+    elif config.cv_strategy == "kfold":
         # trainer
         trainer = CrossValidationTrainer(config, datamodule)
         # train
-        print(f'--------------- Training ---------------')
+        print("--------------- Training ---------------")
         trainer.cv()
         # inference
-        print(f'--------------- Inference ---------------')
+        print("--------------- Inference ---------------")
         trainer.oof()
-    
+
     else:
         raise NotImplementedError
-    
+
     # wandb finish
     wandb.finish()
 

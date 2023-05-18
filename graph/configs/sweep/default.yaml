@@ -1,0 +1,21 @@
+project: DKT_Graph
+entity: recsys01
+program: main.py
+method: grid
+metric:
+  goal: maximize
+  name: tr_acc/tr_auc
+parameters:
+  model.emb_dim: 
+    values: [64, 128, 256]
+  model.n_layers:
+    values: [2,3,4]
+  trainer.epoch:
+    values: [20,30,40]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
+

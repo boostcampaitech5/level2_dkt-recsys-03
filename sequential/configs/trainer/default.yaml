@@ -1,5 +1,8 @@
 # cross validation strategy
-cv_strategy: holdout
+cv_strategy: kfold
+
+# k value of k-fold cross validation
+k: 5
 
 # epoch for training
 epoch: 10
@@ -15,3 +18,6 @@ weight_decay: 0.01
 
 # learning rate scheduler
 scheduler: plateau
+
+# early stopping patience
+patience: 3
