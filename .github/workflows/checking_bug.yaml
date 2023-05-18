@@ -21,6 +21,7 @@ jobs:
     - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
       run: |
         wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        mkdir -p ~/input/data
         tar -zxvf data.tar.gz -C ~/input/data
 
     - name: install dependencies 
@@ -48,6 +49,7 @@ jobs:
     - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
       run: |
         wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        mkdir -p ~/input/data
         tar -zxvf data.tar.gz -C ~/input/data
 
     - name: install dependencies 
