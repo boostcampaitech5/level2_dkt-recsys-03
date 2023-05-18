@@ -18,7 +18,14 @@ logger = get_logger(logging_conf)
 
 
 def set_logging(config: DictConfig) -> None:
-    wandb.log({"batch_size": config.data.batch_size, "max_seq_len": config.data.max_seq_len})
+    wandb.log(
+        {
+            "batch_size": config.data.batch_size,
+            "max_seq_len": config.data.max_seq_len,
+            "augmentation": config.data.augmentation,
+            "stride": config.data.stride,
+        }
+    )
 
     wandb.log(
         {
@@ -270,6 +277,49 @@ class LSTMATTN(ModelBase):
         )
 
         out, _ = self.lstm(X)
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+
+        # Adding Attention
+        extended_attention_mask = mask.unsqueeze(1).unsqueeze(2)
+        extended_attention_mask = extended_attention_mask.to(dtype=torch.float32)
+        extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
+        head_mask = [None] * self.n_layers
+
+        encoded_layers = self.attn(out, extended_attention_mask, head_mask=head_mask)
+        sequence_output = encoded_layers[-1]
+
+        out = self.fc(sequence_output).view(batch_size, -1)
+        return out
+
+
+class GRUATTN(ModelBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.gru = nn.GRU(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
+        self.bert_config = BertConfig(
+            3,  # not used
+            hidden_size=self.hidden_dim,
+            num_hidden_layers=1,
+            num_attention_heads=self.n_heads,
+            intermediate_size=self.hidden_dim,
+            hidden_dropout_prob=self.drop_out,
+            attention_probs_dropout_prob=self.drop_out,
+        )
+        self.attn = BertEncoder(self.bert_config)
+
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
+
+        out, _ = self.gru(X)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
 
         # Adding Attention

@@ -8,7 +8,7 @@ from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
 from .dataloader import DKTDataModule, DKTDataKFoldModule
-from .models import LSTM, LSTMATTN, BERT, LQTR, SAINTPLUS
+from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS
 from .utils import get_logger, logging_conf
 
 
@@ -32,8 +32,14 @@ class Trainer:
         elif self.config.model.model_name == "LSTMATTN":
             wandb.save(f"./configs/model/LSTMATTN.yaml")
             return LSTMATTN(self.config)
+        elif self.config.model.model_name == "GRUATTN":
+            wandb.save(f"./configs/model/GRUATTN.yaml")
+            return GRUATTN(self.config)
         elif self.config.model.model_name == "BERT":
             wandb.save(f"./configs/model/BERT.yaml")
+            return BERT(self.config)
+        elif self.config.model.model_name == "SASREC":
+            wandb.save(f"./configs/model/SASREC.yaml")
             return BERT(self.config)
         elif self.config.model.model_name == "LQTR":
             wandb.save(f"./configs/model/LQTR.yaml")
@@ -100,9 +106,7 @@ class KfoldTrainer(Trainer):
 
         # K-fold Cross Validation
         for fold, (tra_idx, val_idx) in enumerate(kf.split(tr_dataset)):
-            print(
-                f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------"
-            )
+            print(f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------")
 
             # create model for cv
             self.fold_model = self.load_model()
@@ -127,9 +131,7 @@ class KfoldTrainer(Trainer):
             val_auc = torch.stack([x["val_avg_auc"] for x in self.fold_model.val_result]).mean()
             val_acc = torch.stack([x["val_avg_acc"] for x in self.fold_model.val_result]).mean()
 
-            print(
-                f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}"
-            )
+            print(f">>> >>> tr_auc: {tr_auc}, tr_acc: {tr_acc}, val_auc: {val_auc}, val_acc: {val_acc}")
             self.cv_score += val_auc / self.config.trainer.k
             self.cv_predict(fold)
 
@@ -147,14 +149,7 @@ class KfoldTrainer(Trainer):
         submit_df = submit_df.reset_index()
         submit_df.columns = ["id", "prediction"]
 
-        file_name = (
-            self.config.wandb.name
-            + "_"
-            + self.config.model.model_name
-            + "_"
-            + str(fold)
-            + "_submit.csv"
-        )
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         self.result_csv_list.append(write_path)
 
@@ -181,13 +176,7 @@ class KfoldTrainer(Trainer):
         submit_df["prediction"] = pd.DataFrame(test_prob)
 
         # file saving
-        file_name = (
-            self.config.wandb.name
-            + "_"
-            + self.config.model.model_name
-            + str(self.config.trainer.k)
-            + "final_submit.csv"
-        )
+        file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_submit.csv"
         write_path = os.path.join(self.config.paths.output_path, file_name)
         os.makedirs(name=self.config.paths.output_path, exist_ok=True)
 
