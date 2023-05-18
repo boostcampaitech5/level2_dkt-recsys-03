@@ -5,6 +5,7 @@ import torch
 import random
 import numpy as np
 import pandas as pd
+from collections import Counter
 from tqdm import tqdm
 from datetime import datetime
 import pytorch_lightning as pl
@@ -133,36 +134,26 @@ class DKTDataModule(pl.LightningDataModule):
         stride = self.config.data.stride
         wandb.log({"stride": stride})
 
-        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
-        augmented_data = {}
+        data = data.sort_values(by=["userID", "Timestamp"], axis=0)
 
-        # Make empty dataframe
-        for col in data.columns:
-            augmented_data[col] = []
-        augmented_data = pd.DataFrame(augmented_data)
-        count_df = data[columns].groupby("userID").count()
-        count_dict = {}
+        augmented_data = []
+        count_dict = Counter(data.userID)
 
-        for id in count_df.index:
-            count_dict[id] = count_df.loc[id][0]
-
-        n_id = int(0)
-        n_total = 0
+        n_id = 0
         for id, cnt in tqdm(count_dict.items()):
             seq = data[data.userID == id].reset_index(drop=True)
             if cnt <= window_size:
                 seq["userID"] = n_id
-                augmented_data = pd.concat([augmented_data, seq])
-                n_total += 1
+                augmented_data += seq.values.tolist()
                 n_id += 1
             else:
                 total_window = ((cnt - window_size) // stride) + 1
                 for window_i in range(total_window):
                     aug = seq.iloc[window_i * stride : window_i * stride + window_size, :]
                     aug["userID"] = [n_id] * window_size
-                    augmented_data = pd.concat([augmented_data, aug])
+                    augmented_data += aug.values.tolist()
                     n_id += 1
-                n_total += total_window
+        augmented_data = pd.DataFrame(augmented_data, columns=data.columns)
 
         return augmented_data
 
@@ -174,7 +165,8 @@ class DKTDataModule(pl.LightningDataModule):
         train = pd.read_csv(train_file_path)
 
         if self.config.data.augmentation == True:
-            print("---------DATA AUGMENTATION-------")
+            wandb.log({"augmentation": self.config.data.augmentation})
+            print("----------------- DATA AUGMENTATION -----------------")
             before = train.userID.nunique()
             self.df = self.augemtation(train)
             print(f"before augmetation : {before}  after augmentation : {self.df.userID.nunique()}")
