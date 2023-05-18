@@ -131,7 +131,7 @@ class Trainer:
 
         if is_submit == True:
             submission = self.get_sample_submission_csv()
-            submission["prediction"] = np.where(test_prob >= 0.5, 1, 0)
+            submission["prediction"] = test_prob
             self.save_result_csv(submission, subset="submission")
 
         else:
@@ -223,7 +223,7 @@ class CrossValidationTrainer(Trainer):
 
         if is_submit == True:
             submission = self.get_sample_submission_csv()
-            submission["prediction"] = test_pred
+            submission["prediction"] = test_prob
             self.save_result_csv(submission, subset="submission")
 
         else:
