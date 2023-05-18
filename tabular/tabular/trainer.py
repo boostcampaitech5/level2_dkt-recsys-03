@@ -120,7 +120,7 @@ class Trainer:
         result = self.make_result_df(valid.user_id, valid_prob, valid.y)
         self.save_result_csv(result, subset="valid")
 
-    def inference(self, is_submit: bool = False) -> None:
+    def inference(self) -> None:
         test = self.datamodule.test_dataset
 
         if self.config.model.name == "LGBM":
@@ -129,9 +129,9 @@ class Trainer:
 
             test_prob = model.predict(test.X)
 
-        if is_submit == True:
+        if self.config.is_submit == True:
             submission = self.get_sample_submission_csv()
-            submission["prediction"] = np.where(test_prob >= 0.5, 1, 0)
+            submission["prediction"] = test_prob
             self.save_result_csv(submission, subset="submission")
 
         else:
@@ -209,7 +209,7 @@ class CrossValidationTrainer(Trainer):
         print(f"cv_score:{cv_score}")
         wandb.log({"cv_score": cv_score})
 
-    def oof(self, is_submit: bool = False) -> None:
+    def oof(self) -> None:
         test = self.test_dataset
         probs = []
         for i in range(5):
@@ -221,9 +221,9 @@ class CrossValidationTrainer(Trainer):
                 probs.append(test_prob)
         test_prob, test_pred = self.soft_voting(np.array(probs))
 
-        if is_submit == True:
+        if self.config.is_submit == True:
             submission = self.get_sample_submission_csv()
-            submission["prediction"] = test_pred
+            submission["prediction"] = test_prob
             self.save_result_csv(submission, subset="submission")
 
         else:

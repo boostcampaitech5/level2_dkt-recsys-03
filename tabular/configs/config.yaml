@@ -6,7 +6,11 @@ defaults:
   - paths: default.yaml
   - wandb: default.yaml
 
+
+
 skip_data_processing: False
+
+is_submit: False
 
 cv_strategy: kfold
 
