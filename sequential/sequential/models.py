@@ -1,6 +1,8 @@
 import torch
 import wandb
+import numpy as np
 import torch.nn as nn
+import warnings
 import pytorch_lightning as pl
 from omegaconf import DictConfig
 from torch.nn import functional as F
@@ -40,8 +42,20 @@ def set_logging(config: DictConfig) -> None:
                 "n_tags": config.model.n_tags,
             }
         )
+    elif config.model.model_name == "SAINT_PLUS":
+        wandb.log(
+            {
+                "n_encoder": config.model.n_encoder,
+                "n_decoder": config.model.n_decoder,
+                "embed_dims": config.model.embed_dims,
+                "n_tests": config.model.n_tests,
+                "n_questions": config.model.n_questions,
+                "n_tags": config.model.n_tags,
+                "n_test_types": config.model.n_test_types,
+            }
+        )
 
-    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR"]:
+    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR", "SAINT_PLUS"]:
         wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
 
     if config.model.model_name in ["LQRT"]:
@@ -213,7 +227,7 @@ class LSTM(ModelBase):
         super().__init__(config)
         self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -245,7 +259,7 @@ class LSTMATTN(ModelBase):
         )
         self.attn = BertEncoder(self.bert_config)
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -287,7 +301,7 @@ class BERT(ModelBase):
         )
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -302,6 +316,131 @@ class BERT(ModelBase):
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
         return out
+
+
+class EncoderEmbedding(nn.Module):
+    def __init__(self, n_questions, n_tests, n_tags, n_test_types, n_dims, seq_len):
+        super(EncoderEmbedding, self).__init__()
+        self.n_dims = n_dims
+        self.seq_len = seq_len
+        self.embedding_test = nn.Embedding(n_tests, n_dims)
+        self.embedding_question = nn.Embedding(n_questions, n_dims)
+        self.embedding_tag = nn.Embedding(n_tags, n_dims)
+        self.embedding_test_type = nn.Embedding(n_test_types, n_dims)
+        self.embedding_pos = nn.Embedding(seq_len, n_dims)
+
+    def forward(self, tests, questions, tags, test_types):
+        device = questions.device
+
+        embed_test = self.embedding_test(tests)
+        embed_quest = self.embedding_question(questions)
+        embed_tag = self.embedding_tag(tags)
+        embed_test_type = self.embedding_test_type(test_types)
+
+        seq = torch.arange(self.seq_len).unsqueeze(0).to(device)
+        embed_pos = self.embedding_pos(seq)
+        return embed_test + embed_quest + embed_tag + embed_test_type + embed_pos
+
+
+class DecoderEmbedding(nn.Module):
+    def __init__(self, n_responses, n_dims, seq_len):
+        super(DecoderEmbedding, self).__init__()
+        self.n_dims = n_dims
+        self.seq_len = seq_len
+        self.embedding_response = nn.Embedding(n_responses, n_dims)
+        self.embedding_prior_solving_time = nn.Linear(1, n_dims, bias=False)
+        self.embedding_pos = nn.Embedding(seq_len, n_dims)
+
+    def forward(self, responses, prior_solving_time):
+        device = responses.device
+
+        prior_solving_time = prior_solving_time.float()
+
+        embed_response = self.embedding_response(responses)
+        embed_prior_solving_time = self.embedding_prior_solving_time(prior_solving_time)
+
+        seq = torch.arange(self.seq_len).unsqueeze(0).to(device)
+        embed_pos = self.embedding_pos(seq)
+        return embed_response + embed_prior_solving_time + embed_pos
+
+
+class SAINTPLUS(LightningClass):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.config = config
+        self.seq_len = self.config.data.max_seq_len
+        self.n_tests = self.config.model.n_tests
+        self.n_questions = self.config.model.n_questions
+        self.n_tags = self.config.model.n_tags
+        self.n_test_types = self.config.model.n_test_types
+
+        self.drop_out = self.config.model.drop_out
+        self.n_heads = self.config.model.n_heads
+        self.n_encoder = self.config.model.n_decoder
+        self.n_decoder = self.config.model.n_decoder
+        self.embed_dims = self.config.model.embed_dims
+        self.ffn_dim = self.embed_dims * 4
+
+        # Embedding
+        self.encoder_embedding = EncoderEmbedding(
+            n_tests=self.n_tests,
+            n_questions=self.n_questions,
+            n_tags=self.n_tags,
+            n_test_types=self.n_test_types,
+            n_dims=self.embed_dims,
+            seq_len=self.seq_len,
+        )
+
+        self.decoder_embedding = DecoderEmbedding(n_responses=4, n_dims=self.embed_dims, seq_len=self.seq_len)
+
+        # transformer
+        self.transformer = nn.Transformer(
+            d_model=self.embed_dims,
+            nhead=self.n_heads,
+            num_encoder_layers=self.n_decoder,
+            num_decoder_layers=self.n_decoder,
+            dim_feedforward=self.ffn_dim,
+            dropout=self.drop_out,
+            batch_first=True,
+        )
+
+        # fully connected layer
+        self.fc = nn.Linear(self.embed_dims, 1)
+
+        # logs
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+
+        self.tr_result = []
+        self.val_result = []
+
+    def forward(self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs):  # kwargs is not used
+        device = question.device
+
+        interaction[:, 0] = 3
+        prior_solving_time = prior_solving_time.unsqueeze(-1)
+
+        enc = self.encoder_embedding(tests=test, questions=question, tags=tag, test_types=test_type)
+        dec = self.decoder_embedding(responses=interaction, prior_solving_time=prior_solving_time)
+        # mask
+        mask = torch.ones((self.seq_len, self.seq_len)).triu(diagonal=1).to(device=device, dtype=torch.bool)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+
+            decoder_output = self.transformer(
+                src=enc,  # encoder seq
+                tgt=dec,  # decoder seq
+                src_mask=mask,
+                tgt_mask=mask,
+                memory_mask=mask,
+            )
+
+        # fully connected layer
+        out = self.fc(decoder_output)
+        return out.squeeze()
 
 
 class Feed_Forward_bolck(nn.Module):
@@ -356,7 +495,7 @@ class LQTR(ModelBase):
         # use sine positional embeddinds
         return torch.arange(seq_len).unsqueeze(0)
 
-    def forward(self, test, question, tag, correct, mask, interaction):
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,

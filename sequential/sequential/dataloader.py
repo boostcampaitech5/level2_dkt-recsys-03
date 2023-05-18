@@ -23,12 +23,21 @@ class DKTDataset(Dataset):
         row = self.data[index]
 
         # Load from data
-        test, question, tag, correct = row[0], row[1], row[2], row[3]
+        test, question, tag, correct, priorSolvingTime, testType = (
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+            row[4],
+            row[5],
+        )
         data = {
             "test": torch.tensor(test + 1, dtype=torch.int),
             "question": torch.tensor(question + 1, dtype=torch.int),
             "tag": torch.tensor(tag + 1, dtype=torch.int),
             "correct": torch.tensor(correct, dtype=torch.int),
+            "prior_solving_time": torch.tensor(priorSolvingTime, dtype=torch.int),
+            "test_type": torch.tensor(testType + 1, dtype=torch.int),
         }
 
         # gernerate mask & exec truncate or insert padding
@@ -51,7 +60,7 @@ class DKTDataset(Dataset):
         interaction = interaction.roll(shifts=1)
         interaction_mask = data["mask"].roll(shifts=1)
         interaction_mask[0] = 0
-        interaction = (interaction * interaction_mask).to(torch.int64)
+        interaction = (interaction * interaction_mask).to(torch.int)
         data["interaction"] = interaction
         data = {k: v.int() for k, v in data.items()}
         return data
@@ -79,7 +88,13 @@ class DKTDataModule(pl.LightningDataModule):
 
     # Encode and Save/Load data
     def __preprocessing(self, is_train: bool = True):
-        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag"]
+        ##### testType 파생변수 생성
+        if is_train:
+            self.df["testType"] = self.df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
+        else:
+            self.test_df["testType"] = self.test_df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
+
+        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "testType"]
 
         # convert time data to int timestamp
         def convert_time(s: str):
@@ -103,9 +118,7 @@ class DKTDataModule(pl.LightningDataModule):
                 self.df[col] = test
             else:
                 le.classes_ = np.load(le_path)
-                self.test_df[col] = self.test_df[col].apply(
-                    lambda x: x if str(x) in le.classes_ else "unknown"
-                )
+                self.test_df[col] = self.test_df[col].apply(lambda x: x if str(x) in le.classes_ else "unknown")
 
                 self.test_df[col] = self.test_df[col].astype(str)
                 test = le.transform(self.test_df[col])
@@ -116,10 +129,22 @@ class DKTDataModule(pl.LightningDataModule):
         else:
             self.test_df["Timestamp"] = self.test_df["Timestamp"].apply(convert_time)
 
+        ### get diff
+        if is_train:
+            selected = self.df[["Timestamp", "userID"]]
+            diff = selected.groupby(["userID"]).diff()
+
+            prior_solving_time = diff["Timestamp"].fillna(0).clip(0, 300)
+            self.df["priorSolvingTime"] = prior_solving_time
+        else:
+            t_selected = self.test_df[["Timestamp", "userID"]]
+            t_diff = t_selected.groupby(["userID"]).diff()
+
+            t_prior_solving_time = t_diff["Timestamp"].fillna(0).clip(0, 300)
+            self.test_df["priorSolvingTime"] = t_prior_solving_time
+
     # split train data to train & valid : this part will be excahnged
-    def split_data(
-        self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42
-    ):
+    def split_data(self, data: np.ndarray, ratio: float = 0.7, shuffle: bool = True, seed: int = 42):
         seed = self.config.seed
         if shuffle:
             random.seed(seed)
@@ -183,17 +208,19 @@ class DKTDataModule(pl.LightningDataModule):
         if stage == "predict" or stage is None:
             self.__preprocessing(is_train=False)
 
-        self.n_questions = len(
-            np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy"))
-        )
-        self.n_tests = len(
-            np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy"))
-        )
-        self.n_tags = len(
-            np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy"))
-        )
+        self.n_questions = len(np.load(os.path.join(self.config.paths.asset_path, "assessmentItemID_classes.npy")))
+        self.n_tests = len(np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy")))
+        self.n_tags = len(np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy")))
 
-        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag"]
+        columns = [
+            "userID",
+            "assessmentItemID",
+            "testId",
+            "answerCode",
+            "KnowledgeTag",
+            "priorSolvingTime",
+            "testType",
+        ]
 
         if stage == "fit" or stage is None:
             self.df = self.df.sort_values(by=["userID", "Timestamp"], axis=0)
@@ -206,6 +233,8 @@ class DKTDataModule(pl.LightningDataModule):
                         r["assessmentItemID"].values,
                         r["KnowledgeTag"].values,
                         r["answerCode"].values,
+                        r["priorSolvingTime"].values,
+                        r["testType"].values,
                     )
                 )
             )
@@ -222,6 +251,8 @@ class DKTDataModule(pl.LightningDataModule):
                         r["assessmentItemID"].values,
                         r["KnowledgeTag"].values,
                         r["answerCode"].values,
+                        r["priorSolvingTime"].values,
+                        r["testType"].values,
                     )
                 )
             )
