@@ -227,9 +227,7 @@ class LSTM(ModelBase):
         super().__init__(config)
         self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True)
 
-    def forward(
-        self, test, question, tag, correct, mask, interaction, **kwargs
-    ):  # kwargs is not used
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -261,9 +259,7 @@ class LSTMATTN(ModelBase):
         )
         self.attn = BertEncoder(self.bert_config)
 
-    def forward(
-        self, test, question, tag, correct, mask, interaction, **kwargs
-    ):  # kwargs is not used
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -305,9 +301,7 @@ class BERT(ModelBase):
         )
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
-    def forward(
-        self, test, question, tag, correct, mask, interaction, **kwargs
-    ):  # kwargs is not used
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
@@ -398,9 +392,7 @@ class SAINTPLUS(LightningClass):
             seq_len=self.seq_len,
         )
 
-        self.decoder_embedding = DecoderEmbedding(
-            n_responses=4, n_dims=self.embed_dims, seq_len=self.seq_len
-        )
+        self.decoder_embedding = DecoderEmbedding(n_responses=4, n_dims=self.embed_dims, seq_len=self.seq_len)
 
         # transformer
         self.transformer = nn.Transformer(
@@ -424,9 +416,7 @@ class SAINTPLUS(LightningClass):
         self.tr_result = []
         self.val_result = []
 
-    def forward(
-        self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs
-    ):  # kwargs is not used
+    def forward(self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs):  # kwargs is not used
         device = question.device
 
         interaction[:, 0] = 3
@@ -435,11 +425,7 @@ class SAINTPLUS(LightningClass):
         enc = self.encoder_embedding(tests=test, questions=question, tags=tag, test_types=test_type)
         dec = self.decoder_embedding(responses=interaction, prior_solving_time=prior_solving_time)
         # mask
-        mask = (
-            torch.ones((self.seq_len, self.seq_len))
-            .triu(diagonal=1)
-            .to(device=device, dtype=torch.bool)
-        )
+        mask = torch.ones((self.seq_len, self.seq_len)).triu(diagonal=1).to(device=device, dtype=torch.bool)
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
@@ -509,9 +495,7 @@ class LQTR(ModelBase):
         # use sine positional embeddinds
         return torch.arange(seq_len).unsqueeze(0)
 
-    def forward(
-        self, test, question, tag, correct, mask, interaction, **kwargs
-    ):  # kwargs is not used
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
             question=question,
