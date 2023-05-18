@@ -22,7 +22,7 @@ jobs:
       run: |
         wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
         mkdir -p ~/input/data
-        tar -zxvf data.tar.gz -C ~/input/data
+        tar -zxvf data.tar.gz -C ~/input
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -50,7 +50,7 @@ jobs:
       run: |
         wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
         mkdir -p ~/input/data
-        tar -zxvf data.tar.gz -C ~/input/data
+        tar -zxvf data.tar.gz -C ~/input
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
