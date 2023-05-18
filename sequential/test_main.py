@@ -25,6 +25,3 @@ def test_main(*args, **kwargs):
             __main(config)
 
     inner_main()
-
-
-test_main()
