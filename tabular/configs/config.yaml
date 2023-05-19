@@ -6,6 +6,8 @@ defaults:
   - paths: default.yaml
   - wandb: default.yaml
 
+data_version: 15154140
+
 skip_data_processing: False
 
 cv_strategy: kfold
