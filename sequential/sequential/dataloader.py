@@ -175,6 +175,8 @@ class DKTDataModule(pl.LightningDataModule):
                 total_window = ((cnt - window_size) // stride) + 1
                 for window_i in range(total_window):
                     aug = seq.iloc[cnt - (window_i * stride + window_size) : cnt - (window_i * stride), :]
+                    augmented_data += aug.values.tolist()
+                    n_id += 1
 
                     # shuffle
                     if self.config.data.shuffle and window_i > 0:
@@ -185,10 +187,6 @@ class DKTDataModule(pl.LightningDataModule):
                             shuffled_datas += aug.values.tolist()
                             n_id += 1
                         augmented_data += shuffled_datas
-
-                    else:
-                        augmented_data += aug.values.tolist()
-                        n_id += 1
 
         augmented_data = pd.DataFrame(augmented_data, columns=data.columns)
         return augmented_data
