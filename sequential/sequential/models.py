@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 from omegaconf import DictConfig
 from torch.nn import functional as F
 from transformers.models.bert.modeling_bert import BertConfig, BertEncoder, BertModel
+from transformers.models.gpt2.modeling_gpt2 import GPT2Config, GPT2Model
 
 from .metrics import get_metric
 from .utils import get_logger, logging_conf
@@ -356,6 +357,39 @@ class BERT(ModelBase):
             max_position_embeddings=self.max_seq_len,
         )
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
+
+    def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
+        X, batch_size = super().forward(
+            test=test,
+            question=question,
+            tag=tag,
+            correct=correct,
+            mask=mask,
+            interaction=interaction,
+        )
+
+        encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)
+        out = encoded_layers[0]
+        out = out.contiguous().view(batch_size, -1, self.hidden_dim)
+        out = self.fc(out).view(batch_size, -1)
+        return out
+
+
+class GPT2(ModelBase):
+    def __init__(self, config):
+        super().__init__(config)
+        self.n_heads = self.config.model.n_heads
+        self.drop_out = self.config.model.drop_out
+        self.max_seq_len = self.config.data.max_seq_len
+        # GPT2 config
+        self.gpt2_config = GPT2Config(
+            vocab_size=3,  # not used
+            n_embd=self.hidden_dim,
+            n_layer=self.n_layers,
+            n_head=self.n_heads,
+            n_positions=self.max_seq_len,
+        )
+        self.encoder = GPT2Model(self.gpt2_config)  # Transformer Encoder
 
     def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(

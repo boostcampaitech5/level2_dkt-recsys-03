@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
 from .dataloader import DKTDataModule, DKTDataKFoldModule
-from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS
+from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS, GPT2
 from .utils import get_logger, logging_conf
 
 
@@ -48,6 +48,9 @@ class Trainer:
         elif self.config.model.model_name == "SAINT_PLUS":
             wandb.save(f"./configs/model/SAINT_PLUS.yaml")
             return SAINTPLUS(self.config)
+        elif self.config.model.model_name == "GPT2":
+            wandb.save(f"./configs/model/GPT2.yaml")
+            return GPT2(self.config)
         else:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
