@@ -25,7 +25,7 @@
 
 ## Setup
 ```bash
-cd /opt/ml/level2_dkt_recsys-03/sequential/
+cd ~/level2_dkt_recsys-03/sequential/
 conda init
 (base) . ~/.bashrc
 (base) conda create -n sequential python=3.10 -y

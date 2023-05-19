@@ -2,4 +2,4 @@
 output_path: outputs/
 
 # directory of data
-data_path: /opt/ml/input/data/
+data_path: ~/input/data/

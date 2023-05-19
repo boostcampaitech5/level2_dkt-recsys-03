@@ -1,0 +1,12 @@
+model_name: SAINT_PLUS
+
+n_encoder: 1
+n_decoder: 1
+n_heads: 1
+embed_dims: 1
+drop_out: 0.1
+
+n_tests: 1538
+n_questions: 9455
+n_tags: 913
+n_test_types: 10

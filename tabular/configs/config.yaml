@@ -10,6 +10,8 @@ data_version: 15154140
 
 skip_data_processing: False
 
+is_submit: False
+
 cv_strategy: kfold
 
 seed: 42

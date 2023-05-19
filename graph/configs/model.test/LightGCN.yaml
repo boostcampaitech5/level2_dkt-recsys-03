@@ -1,0 +1,7 @@
+model_name: LightGCN
+
+#embedding dimensions
+emb_dim: 1
+
+#number of layers
+n_layers: 1
