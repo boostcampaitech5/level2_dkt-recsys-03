@@ -2,4 +2,4 @@
 data_dir: ~/input/data/
 
 #path to output directory
-output_dir: ~/level2_dkt-recsys-03/tabular/output/
+output_dir: output/

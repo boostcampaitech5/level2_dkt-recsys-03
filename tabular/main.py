@@ -9,6 +9,9 @@ from tabular.trainer import Trainer, CrossValidationTrainer
 
 
 def __main(config: omegaconf.DictConfig = None) -> None:
+    # turn to absolute path
+    config.paths.data_path = os.path.abspath(config.paths.data_path)
+
     # setting
     print("--------------- Setting ---------------")
     config.timestamp = get_timestamp()
@@ -34,7 +37,7 @@ def __main(config: omegaconf.DictConfig = None) -> None:
     else:
         datamodule.prepare_data()
         datamodule.setup()
-    wandb.run.summary["data_dir"] = config.paths.data_dir
+    wandb.run.summary["data_version"] = config.data_version
 
     if config.cv_strategy == "holdout":
         # trainer
