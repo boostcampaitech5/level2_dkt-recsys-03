@@ -27,7 +27,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
+        key: ${{ env.pythonLocation }}-seq-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -60,7 +60,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
+        key: ${{ env.pythonLocation }}-graph-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -93,7 +93,7 @@ jobs:
     - uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
+        key: ${{ env.pythonLocation }}-tab-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
