@@ -4,14 +4,14 @@ program: main.py
 method: grid
 metric:
   goal: maximize
-  name: tr_acc/tr_auc
+  name: val_acc
 parameters:
   model.emb_dim: 
     values: [64, 128, 256]
   model.n_layers:
     values: [2,3,4]
   trainer.epoch:
-    values: [20,30,40]
+    values: [10]
 
 command:
   - ${env}
