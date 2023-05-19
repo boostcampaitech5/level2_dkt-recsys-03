@@ -5,11 +5,7 @@ from typing import List, Union, Optional
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from sklearn.model_selection import GroupKFold
-from feature.utils import (
-    check_and_get_generators,
-    get_feature_engineering_pipeline,
-    get_feature_dtype,
-)
+from feature.utils import check_and_get_generators, get_feature_engineering_pipeline, get_feature_dtype, get_feature_dtype_for_lgbm
 
 
 class TabularDataModule:
@@ -17,6 +13,7 @@ class TabularDataModule:
         self.latest_version = True
         self.config = config
         self.data_dir = config.paths.data_dir
+        self.data_version = config.data_version
         self.cv_strategy: str = config.cv_strategy
 
         self.train_data: Union[pd.DataFrame, List[pd.DataFrame], None] = None
@@ -65,12 +62,8 @@ class TabularDataModule:
             self.train_data = [self.feature_engineering(df) for df in train_data]
             self.valid_data = [self.feature_engineering(df) for df in valid_data]
 
-            self.train_dataset = [
-                TabularDataset(self.config, df) for df in self.train_data
-            ]
-            self.valid_dataset = [
-                TabularDataset(self.config, df) for df in self.valid_data
-            ]
+            self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
+            self.valid_dataset = [TabularDataset(self.config, df) for df in self.valid_data]
 
         else:
             raise NotImplementedError
@@ -82,26 +75,31 @@ class TabularDataModule:
             print("Update data version...")
             self.update_version()
 
-    def load_data_file(self, path: str) -> pd.DataFrame:
+    def load_data_file(self, path: str, fold=0, is_test=False) -> pd.DataFrame:
         """
         데이터 파일 불러오기
         - 데이터 파일을 불러옵니다.
         - uitls.get_feature_dtype 메서드를 사용해서 dtype을 설정하여 메모리를 관리합니다.
         """
+        tokens = path.split("data/")
+        if self.data_version:
+            path = "".join(tokens[0] + "data/" + str(self.data_version) + f"/fold{fold}/" + tokens[-1])
+
+            if is_test == True:
+                path = "".join(tokens[0] + "data/" + str(self.data_version) + "/" + tokens[-1])
+
         if os.path.splitext(path)[1] == ".csv":
-            return pd.read_csv(
-                path, dtype=get_feature_dtype(), parse_dates=["Timestamp"]
-            )
+            return pd.read_csv(path, dtype=get_feature_dtype(), parse_dates=["Timestamp"])
 
         else:
             raise NotImplementedError
 
-    def write_metadata(self, df: pd.DataFrame, directory: str) -> None:
+    def write_metadata(self, df: pd.DataFrame, dir: str) -> None:
         """
         메타데이터 텍스트 파일 쓰기
         - 업데이트된 데이터 버전에 대응하는 metadata.txt 파일을 저장합니다.
         """
-        path = directory + "metadata.txt"
+        path = dir + "metadata.txt"
         with open(path, "w") as f:
             f.write("Metadata Information:\n")
             f.write("---------------------\n")
@@ -122,10 +120,10 @@ class TabularDataModule:
             self.train_data.sort_values(by=["userID", "Timestamp"], inplace=True)
             self.valid_data.sort_values(by=["userID", "Timestamp"], inplace=True)
             # save updated data files
-            directory = f"{data_dir}{version}/fold0/"
-            os.makedirs(directory, exist_ok=True)
-            self.train_data.to_csv(f"{directory}train_data.csv", index=False)
-            self.valid_data.to_csv(f"{directory}valid_data.csv", index=False)
+            dir = f"{data_dir}{version}/fold0/"
+            os.makedirs(dir, exist_ok=True)
+            self.train_data.to_csv(f"{dir}train_data.csv", index=False)
+            self.valid_data.to_csv(f"{dir}valid_data.csv", index=False)
 
         elif self.cv_strategy == "kfold":
             for i in range(5):
@@ -133,20 +131,20 @@ class TabularDataModule:
                 self.train_data[i].sort_values(by=["userID", "Timestamp"], inplace=True)
                 self.valid_data[i].sort_values(by=["userID", "Timestamp"], inplace=True)
                 # save updated data files
-                directory = f"{data_dir}{version}/fold{i}/"
-                os.makedirs(directory, exist_ok=True)
-                self.train_data[i].to_csv(f"{directory}train_data.csv", index=False)
-                self.valid_data[i].to_csv(f"{directory}valid_data.csv", index=False)
+                dir = f"{data_dir}{version}/fold{i}/"
+                os.makedirs(dir, exist_ok=True)
+                self.train_data[i].to_csv(f"{dir}train_data.csv", index=False)
+                self.valid_data[i].to_csv(f"{dir}valid_data.csv", index=False)
 
         else:
             raise NotImplementedError
 
-        directory = f"{data_dir}{version}/"
-        os.makedirs(directory, exist_ok=True)
+        dir = f"{data_dir}{version}/"
+        os.makedirs(dir, exist_ok=True)
         self.test_data.sort_values(by=["userID", "Timestamp"], inplace=True)
-        self.test_data.to_csv(f"{directory}test_data.csv", index=False)
+        self.test_data.to_csv(f"{dir}test_data.csv", index=False)
 
-        self.write_metadata(self.test_data, directory)
+        self.write_metadata(self.test_data, dir)
 
     def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -174,7 +172,8 @@ class TabularDataModule:
                 columns=list(pipline.named_transformers.keys()),
             )
             df.reset_index(drop=True, inplace=True)
-            return pd.concat([df, features_df], axis=1)
+            result = pd.concat([df, features_df], axis=1)
+            return result.astype(get_feature_dtype_for_lgbm())
 
         else:
             print("Data is lastest version...")
@@ -190,30 +189,20 @@ class TabularDataModule:
         data_dir = self.config.paths.data_dir
 
         if self.cv_strategy == "holdout":
-            self.train_data = self.load_data_file(f"{data_dir}/fold0/train_data.csv")
-            self.valid_data = self.load_data_file(f"{data_dir}/fold0/valid_data.csv")
+            self.train_data = self.load_data_file(self.data_dir + "train_data.csv")
+            self.valid_data = self.load_data_file(self.data_dir + "valid_data.csv")
 
             self.train_dataset = TabularDataset(self.config, self.train_data)
             self.valid_dataset = TabularDataset(self.config, self.valid_data)
 
         elif self.cv_strategy == "kfold":
-            self.train_data = [
-                self.load_data_file(f"{data_dir}/fold{i}/train_data.csv")
-                for i in range(5)
-            ]
-            self.valid_data = [
-                self.load_data_file(f"{data_dir}/fold{i}/valid_data.csv")
-                for i in range(5)
-            ]
+            self.train_data = [self.load_data_file(self.data_dir + "train_data.csv", i) for i in range(5)]
+            self.valid_data = [self.load_data_file(self.data_dir + "valid_data.csv", i) for i in range(5)]
 
-            self.train_dataset = [
-                TabularDataset(self.config, df) for df in self.train_data
-            ]
-            self.valid_dataset = [
-                TabularDataset(self.config, df) for df in self.valid_data
-            ]
+            self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
+            self.valid_dataset = [TabularDataset(self.config, df) for df in self.valid_data]
 
-        self.test_data = self.load_data_file(f"{data_dir}/test_data.csv")
+        self.test_data = self.load_data_file(self.data_dir + "test_data.csv", is_test=True)
         self.test_dataset = TabularDataset(self.config, self.test_data, is_test=True)
 
 
