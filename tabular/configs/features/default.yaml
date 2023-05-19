@@ -4,6 +4,17 @@ features:
   - KnowledgeTag
 # derived
   - UserAcc
+  - UserTag1Acc
   - UserTag2Acc
   - UserLastTag1Correct
   - UserLastTag2Correct
+  - ItemNumScaled
+  - Tag1Acc
+  - Tag2Acc
+  - UserTestRetakeCnt
+  - Tag2
+  - UserRecency1
+  - UserRecency2
+  - UserRecency3
+  - UserRecency4
+  - UserRecency5

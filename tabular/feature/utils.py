@@ -8,9 +8,7 @@ from feature.modules import FeatureGenerator
 from feature import generators as G
 
 
-def check_and_get_generators(
-    df: pd.DataFrame, config: DictConfig
-) -> List[Tuple[str, FeatureGenerator]]:
+def check_and_get_generators(df: pd.DataFrame, config: DictConfig) -> List[Tuple[str, FeatureGenerator]]:
     features = OmegaConf.to_container(config.features)["features"]
     generators = []
     for feature in features:
@@ -19,9 +17,7 @@ def check_and_get_generators(
     return generators
 
 
-def get_feature_engineering_pipeline(
-    generators: List[Tuple[str, FeatureGenerator]]
-) -> FeatureUnion:
+def get_feature_engineering_pipeline(generators: List[Tuple[str, FeatureGenerator]]) -> FeatureUnion:
     union = FeatureUnion(generators, verbose=True)
     return union
 
@@ -33,13 +29,51 @@ def get_feature_dtype() -> Dict:
         "testId": "category",
         "assessmentItemID": "category",
         "answerCode": "int8",
-        #'Timestamp': 'datetime64[ns]',
         "KnowledgeTag": "category",
         # derived
         "UserAcc": "float16",
+        "UserTag1Acc": "float16",
         "UserTag2Acc": "float16",
-        "UserLastTag1Correct": "category",
-        "UserLastTag2Correct": "category",
+        "UserLastTag1Correct": "int8",
+        "UserLastTag2Correct": "int8",
+        "ItemNumScaled": "float16",
+        "Tag1Acc": "float16",
+        "Tag2Acc": "float16",
+        "UserTestRetakeCnt": "int8",
+        "Tag2": "category",
+        "UserRecency1": "int8",
+        "UserRecency2": "int8",
+        "UserRecency3": "int8",
+        "UserRecency4": "int8",
+        "UserRecency5": "int8",
+    }
+    return dtype
+
+
+def get_feature_dtype_for_lgbm() -> Dict:
+    dtype = {
+        # original
+        "userID": "category",
+        "testId": "category",
+        "assessmentItemID": "category",
+        "answerCode": "int",
+        "KnowledgeTag": "category",
+        # derived
+        "UserAcc": "float",
+        "UserTag1Acc": "float",
+        "UserTag2Acc": "float",
+        "UserLastTag1Correct": "int",
+        "UserLastTag2Correct": "int",
+        "ItemNumScaled": "float",
+        "Tag1Acc": "float",
+        "Tag2Acc": "float",
+        "UserTestRetakeCnt": "int",
+        "Tag2": "category",
+        "UserRecency1": "int",
+        "UserRecency2": "int",
+        "UserRecency3": "int",
+        "UserRecency4": "int",
+        "UserRecency5": "int",
     }
     return dtype
 
@@ -62,5 +96,27 @@ def get_feature_generator(name: str):
         return G.UserLastTag1Correct()
     elif name == "UserLastTag2Correct":
         return G.UserLastTag2Correct()
+    elif name == "UserTestRollingTime":
+        return G.UserTestRollingTime()
+    elif name == "ItemNumScaled":
+        return G.ItemNumScaled()
+    elif name == "Tag1Acc":
+        return G.Tag1Acc()
+    elif name == "Tag2Acc":
+        return G.Tag2Acc()
+    elif name == "UserTestRetakeCnt":
+        return G.UserTestRetakeCnt()
+    elif name == "Tag2":
+        return G.Tag2()
+    elif name == "UserRecency1":
+        return G.UserRecency1()
+    elif name == "UserRecency2":
+        return G.UserRecency2()
+    elif name == "UserRecency3":
+        return G.UserRecency3()
+    elif name == "UserRecency4":
+        return G.UserRecency4()
+    elif name == "UserRecency5":
+        return G.UserRecency5()
     else:
         raise NotImplementedError
