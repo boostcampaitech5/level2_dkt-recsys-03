@@ -173,13 +173,24 @@ class DKTDataModule(pl.LightningDataModule):
                 n_id += 1
             else:
                 total_window = ((cnt - window_size) // stride) + 1
-                for window_i in range(total_window, 0):
+                for window_i in range(total_window):
                     aug = seq.iloc[cnt - (window_i * stride + window_size) : cnt - (window_i * stride), :]
-                    aug["userID"] = [n_id] * window_size
-                    augmented_data += aug.values.tolist()
-                    n_id += 1
-        augmented_data = pd.DataFrame(augmented_data, columns=data.columns)
 
+                    # shuffle
+                    if self.config.data.shuffle and window_i > 0:
+                        shuffled_datas = []
+                        for _ in range(self.config.data.n_shuffle):
+                            aug = aug.sample(frac=1)
+                            aug["userID"] = [n_id] * window_size
+                            shuffled_datas += aug.values.tolist()
+                            n_id += 1
+                        augmented_data += shuffled_datas
+
+                    else:
+                        augmented_data += aug.values.tolist()
+                        n_id += 1
+
+        augmented_data = pd.DataFrame(augmented_data, columns=data.columns)
         return augmented_data
 
     # load and feature_engineering dataset
@@ -194,7 +205,7 @@ class DKTDataModule(pl.LightningDataModule):
             print("----------------- DATA AUGMENTATION -----------------")
             before = train.userID.nunique()
             self.df = self.augemtation(train)
-            print(f"before augmetation : {before}  after augmentation : {self.df.userID.nunique()}")
+            print(f"before augmetation : {before} --> after augmentation : {self.df.userID.nunique()}")
         else:
             self.df = train
 
@@ -223,7 +234,6 @@ class DKTDataModule(pl.LightningDataModule):
         ]
 
         if stage == "fit" or stage is None:
-            self.df = self.df.sort_values(by=["userID", "Timestamp"], axis=0)
             group = (
                 self.df[columns]
                 .groupby("userID")
