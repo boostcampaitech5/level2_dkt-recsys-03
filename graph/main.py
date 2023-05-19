@@ -9,6 +9,9 @@ from graph.dataloader import GraphDataModule
 
 
 def __main(config: DictConfig) -> None:
+    # turn to absolute path
+    config.paths.data_path = os.path.abspath(config.paths.data_path)
+
     # setting
     print("+++++++setting++++++++")
     config.timestamp = get_timestamp()

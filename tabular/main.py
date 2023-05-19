@@ -10,6 +10,9 @@ from tabular.trainer import Trainer, CrossValidationTrainer
 
 @hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
 def main(config: omegaconf.DictConfig = None) -> None:
+    # turn to absolute path
+    config.paths.data_path = os.path.abspath(config.paths.data_path)
+
     # setting
     print("--------------- Setting ---------------")
     config.timestamp = get_timestamp()
