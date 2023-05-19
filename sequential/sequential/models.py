@@ -30,6 +30,8 @@ def set_logging(config: DictConfig) -> None:
             {
                 "augmentation": config.data.augmentation,
                 "stride": config.data.stride,
+                "shuffle": config.data.shuffle,
+                "n_shuffle": config.data.n_shuffle,
             }
         )
 
