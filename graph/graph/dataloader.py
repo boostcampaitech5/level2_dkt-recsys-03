@@ -48,7 +48,10 @@ class GraphDataModule(L.LightningDataModule):
         val_idx = permuted[:1000]
 
         if stage == "fit" or stage is None:
-            self.train_data = {"edge": torch.stack([self.data["edge"][0][tr_idx], self.data["edge"][1][tr_idx]]), "label": self.data["label"][tr_idx]}
+            self.train_data = {
+                "edge": torch.stack([self.data["edge"][0][tr_idx], self.data["edge"][1][tr_idx]]), 
+                "label": self.data["label"][tr_idx]
+                }
 
             self.valid_data = {
                 "edge": torch.stack([self.data["edge"][0][val_idx], self.data["edge"][1][val_idx]]),
