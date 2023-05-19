@@ -1,0 +1,19 @@
+# spercify here default configurations
+defaults:
+  - _self_
+  - features: test.yaml
+  - model: LGBM.yaml
+  - paths: default.yaml
+  - wandb: default.yaml
+
+
+
+skip_data_processing: False
+
+is_submit: False
+
+cv_strategy: kfold
+
+seed: 42
+
+timestamp:
