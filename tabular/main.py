@@ -8,10 +8,9 @@ from tabular.data import TabularDataModule
 from tabular.trainer import Trainer, CrossValidationTrainer
 
 
-@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config: omegaconf.DictConfig = None) -> None:
+def __main(config: omegaconf.DictConfig = None) -> None:
     # turn to absolute path
-    config.paths.data_path = os.path.abspath(config.paths.data_path)
+    config.paths.data_dir = os.path.expanduser(config.paths.data_dir)
 
     # setting
     print("--------------- Setting ---------------")
@@ -65,6 +64,11 @@ def main(config: omegaconf.DictConfig = None) -> None:
 
     # wandb finish
     wandb.finish()
+
+
+@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
+def main(config: omegaconf.DictConfig = None) -> None:
+    __main(config)
 
 
 if __name__ == "__main__":

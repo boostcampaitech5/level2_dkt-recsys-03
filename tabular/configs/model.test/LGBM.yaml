@@ -1,0 +1,12 @@
+name: LGBM
+
+params:
+  objective: binary
+  metric:
+    - auc
+    - accuracy
+  num_iterations: 1
+  num_leaves: 2
+  min_data_in_leaf: 1
+  max_bin: 2
+  feature_fraction: 1.0
