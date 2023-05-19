@@ -33,7 +33,11 @@ class TabularDataModule:
         """
         # load data file
         train_data: pd.DataFrame = self.load_data_file(self.data_dir + "train_data.csv")
-        test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv")
+
+        if self.config.is_submit == True:
+            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv")
+        else:
+            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "test_data.csv")
 
         # data preprocessing
         self.train_data = self.preprocessing(train_data)
@@ -81,8 +85,8 @@ class TabularDataModule:
         - 데이터 파일을 불러옵니다.
         - uitls.get_feature_dtype 메서드를 사용해서 dtype을 설정하여 메모리를 관리합니다.
         """
-        tokens = path.split("data/")
         if self.data_version:
+            tokens = path.split("data/")
             path = "".join(tokens[0] + "data/" + str(self.data_version) + f"/fold{fold}/" + tokens[-1])
 
             if is_test == True:
@@ -104,6 +108,7 @@ class TabularDataModule:
             f.write("Metadata Information:\n")
             f.write("---------------------\n")
             f.write(f"Data Version: {self.config.timestamp}\n")
+            f.write(f"IsSubmit: {self.config.is_submit}\n")
             f.write(f'Column Names: {", ".join(df.columns)}\n')
 
     def update_version(self) -> None:
