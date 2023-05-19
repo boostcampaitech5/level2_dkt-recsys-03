@@ -8,15 +8,21 @@ metric:
   name: val_auc
 parameters:
   model:
-    values: [LSTM, LSTMATTN, BERT, SAINT_PLUS]
+    values: [GPT2]
   trainer.epoch:
-    values: [10, 20, 30]
+    values: [100]
+  trainer.lr:
+    values: [0.001]
+  trainer.weight_decay:
+    values: [0.0001]
+
+  
   data.augmentation:
     values: [True]
   data.stride:
-    values: [100]
+    values: [15]
   data.max_seq_len:
-    values: [100]
+    values: [20]
 
 command:
 - ${env}
