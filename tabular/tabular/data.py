@@ -35,9 +35,9 @@ class TabularDataModule:
         train_data: pd.DataFrame = self.load_data_file(self.data_dir + "train_data.csv")
 
         if self.config.is_submit == True:
-            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv")
-        else:
             test_data: pd.DataFrame = self.load_data_file(self.data_dir + "test_data.csv")
+        else:
+            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv")
 
         # data preprocessing
         self.train_data = self.preprocessing(train_data)
