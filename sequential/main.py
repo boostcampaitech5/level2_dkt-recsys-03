@@ -16,7 +16,7 @@ logger = get_logger(logging_conf)
 
 def __main(config: DictConfig = None) -> None:
     # turn to absolute path
-    config.paths.data_path = os.path.abspath(config.paths.data_path)
+    config.paths.data_path = os.path.expanduser(config.paths.data_path)
 
     # setting
     print(f"----------------- Setting -----------------")
