@@ -12,3 +12,9 @@ augmentation : True
 
 # stride for data augmentation
 stride : 100
+
+# whether to shuffle or not
+shuffle : True
+
+# how many times to shuffle
+n_shuffle : 3
