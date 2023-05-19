@@ -10,7 +10,7 @@ from tabular.trainer import Trainer, CrossValidationTrainer
 
 def __main(config: omegaconf.DictConfig = None) -> None:
     # turn to absolute path
-    config.paths.data_path = os.path.abspath(config.paths.data_path)
+    config.paths.data_dir = os.path.abspath(config.paths.data_dir)
 
     # setting
     print("--------------- Setting ---------------")
