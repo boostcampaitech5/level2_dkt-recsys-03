@@ -3,7 +3,7 @@ defaults:
   - _self_
   - features: test.yaml
   - model: LGBM.yaml
-  - paths: default.yaml
+  - paths: test.yaml
   - wandb: default.yaml
 
 data_version: False
