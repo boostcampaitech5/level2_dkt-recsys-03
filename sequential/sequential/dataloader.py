@@ -173,8 +173,8 @@ class DKTDataModule(pl.LightningDataModule):
                 n_id += 1
             else:
                 total_window = ((cnt - window_size) // stride) + 1
-                for window_i in range(total_window):
-                    aug = seq.iloc[window_i * stride : window_i * stride + window_size, :]
+                for window_i in range(total_window, 0):
+                    aug = seq.iloc[cnt - (window_i * stride + window_size) : cnt - (window_i * stride), :]
                     aug["userID"] = [n_id] * window_size
                     augmented_data += aug.values.tolist()
                     n_id += 1
