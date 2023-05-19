@@ -8,8 +8,10 @@ from tabular.data import TabularDataModule
 from tabular.trainer import Trainer, CrossValidationTrainer
 
 
-@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config: omegaconf.DictConfig = None) -> None:
+def __main(config: omegaconf.DictConfig = None) -> None:
+    # turn to absolute path
+    config.paths.data_dir = os.path.expanduser(config.paths.data_dir)
+
     # setting
     print("--------------- Setting ---------------")
     config.timestamp = get_timestamp()
@@ -20,9 +22,7 @@ def main(config: omegaconf.DictConfig = None) -> None:
     dotenv.load_dotenv()
     WANDB_API_KEY = os.environ.get("WANDB_API_KEY")
     wandb.login(key=WANDB_API_KEY)
-    run = wandb.init(
-        project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name
-    )
+    run = wandb.init(project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name)
     run.tags = [config.model.name, config.cv_strategy]
     wandb.save("./configs/config.yaml")
     wandb.save("./configs/model/LGBM.yaml")
@@ -37,7 +37,7 @@ def main(config: omegaconf.DictConfig = None) -> None:
     else:
         datamodule.prepare_data()
         datamodule.setup()
-    wandb.run.summary["data_dir"] = config.paths.data_dir
+    wandb.run.summary["data_version"] = config.data_version
 
     if config.cv_strategy == "holdout":
         # trainer
@@ -64,6 +64,11 @@ def main(config: omegaconf.DictConfig = None) -> None:
 
     # wandb finish
     wandb.finish()
+
+
+@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
+def main(config: omegaconf.DictConfig = None) -> None:
+    __main(config)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 # spercify here default configurations
 defaults:
   - _self_
-  - features: default.yaml
+  - features: test.yaml
   - model: LGBM.yaml
   - paths: default.yaml
   - wandb: default.yaml
 
-data_version: 15154140
+data_version: False
 
 skip_data_processing: False
 

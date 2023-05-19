@@ -8,16 +8,16 @@ import pandas as pd
 import pytorch_lightning as pl
 from omegaconf import DictConfig
 
-from sequential.dataloader import DKTDataModule
 from sequential.utils import set_seeds, get_logger, logging_conf, get_timestamp
-from sequential.models import LSTM, LSTMATTN, BERT, LQTR
 from sequential.trainer import Trainer, KfoldTrainer
 
 logger = get_logger(logging_conf)
 
 
-@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config: DictConfig = None) -> None:
+def __main(config: DictConfig = None) -> None:
+    # turn to absolute path
+    config.paths.data_path = os.path.expanduser(config.paths.data_path)
+
     # setting
     print(f"----------------- Setting -----------------")
     config.timestamp = get_timestamp()
@@ -49,6 +49,11 @@ def main(config: DictConfig = None) -> None:
         raise NotImplementedError
 
     wandb.finish()
+
+
+@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
+def main(config: DictConfig = None) -> None:
+    __main(config)
 
 
 if __name__ == "__main__":

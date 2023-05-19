@@ -8,21 +8,21 @@ from graph.utils import set_seeds, get_timestamp
 from graph.dataloader import GraphDataModule
 
 
-@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
-def main(config:DictConfig) -> None:
+def __main(config: DictConfig) -> None:
+    # turn to absolute path
+    config.paths.data_path = os.path.expanduser(config.paths.data_path)
+
     # setting
     print("+++++++setting++++++++")
     config.timestamp = get_timestamp()
-    config.wandb.name = f'work-{get_timestamp()}'
+    config.wandb.name = f"work-{get_timestamp()}"
     set_seeds(config.seed)
 
     dotenv.load_dotenv()
-    WANDB_API_KEY = os.environ.get('WANDB_API_KEY')
-    wandb.login(key = WANDB_API_KEY)
+    WANDB_API_KEY = os.environ.get("WANDB_API_KEY")
+    wandb.login(key=WANDB_API_KEY)
 
-    run = wandb.init(entity = config.wandb.entity, 
-                     project = config.wandb.project,
-                     name = config.wandb.name)
+    run = wandb.init(entity=config.wandb.entity, project=config.wandb.project, name=config.wandb.name)
     run.tags = [config.model.model_name]
     wandb.save(f"./configs/config.yaml")
 
@@ -31,6 +31,12 @@ def main(config:DictConfig) -> None:
     trainer.train()
 
     wandb.finish()
+
+
+@hydra.main(version_base="1.2", config_path="configs", config_name="config.yaml")
+def main(config: DictConfig) -> None:
+    __main(config)
+
 
 if __name__ == "__main__":
     main()

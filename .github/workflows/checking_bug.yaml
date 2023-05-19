@@ -1,0 +1,89 @@
+name: check bug before merge
+
+on: 
+  pull_request: 
+    branches: [main]
+jobs: 
+  run_seq: 
+    name: testing sequential approach
+    runs-on: ubuntu-latest 
+    env:
+      working-directory: ./sequential
+
+    steps: 
+    - uses: actions/checkout@v3 
+
+    - name: setup python 
+      uses: actions/setup-python@v4 
+      with: 
+        python-version: '3.10'
+      
+    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+      run: |
+        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        mkdir -p ~/input/data
+        tar -zxvf data.tar.gz -C ~/input
+
+    - name: install dependencies 
+      working-directory: ${{ env.working-directory }}
+      run: pip install -r requirements.txt
+
+    - name: test main.py
+      working-directory: ${{ env.working-directory }}
+      run: pytest
+      
+  run_graph: 
+    name: testing graph approach
+    runs-on: ubuntu-latest 
+    env:
+      working-directory: ./graph
+
+    steps: 
+    - uses: actions/checkout@v3 
+
+    - name: setup python 
+      uses: actions/setup-python@v4 
+      with: 
+        python-version: '3.10'
+
+    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+      run: |
+        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        mkdir -p ~/input/data
+        tar -zxvf data.tar.gz -C ~/input
+
+    - name: install dependencies 
+      working-directory: ${{ env.working-directory }}
+      run: pip install -r requirements.txt
+
+    - name: test main.py
+      working-directory: ${{ env.working-directory }}
+      run: pytest
+
+  run_tab:
+    name: testing tabular approach
+    runs-on: ubuntu-latest 
+    env:
+      working-directory: ./tabular
+
+    steps: 
+    - uses: actions/checkout@v3 
+
+    - name: setup python 
+      uses: actions/setup-python@v4 
+      with: 
+        python-version: '3.10'
+      
+    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+      run: |
+        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+        mkdir -p ~/input/data
+        tar -zxvf data.tar.gz -C ~/input
+
+    - name: install dependencies 
+      working-directory: ${{ env.working-directory }}
+      run: pip install -r requirements.txt
+
+    - name: test main.py
+      working-directory: ${{ env.working-directory }}
+      run: pytest

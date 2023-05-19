@@ -1,5 +1,5 @@
 #path to data directory
-data_dir: /opt/ml/input/data/
+data_dir: ~/input/data/
 
 #path to output directory
-output_dir: /opt/ml/level2_dkt-recsys-03/tabular/output/
+output_dir: output/

@@ -23,10 +23,16 @@ def set_logging(config: DictConfig) -> None:
         {
             "batch_size": config.data.batch_size,
             "max_seq_len": config.data.max_seq_len,
-            "augmentation": config.data.augmentation,
-            "stride": config.data.stride,
         }
     )
+
+    if config.data.augmentation:
+        wandb.log(
+            {
+                "augmentation": config.data.augmentation,
+                "stride": config.data.stride,
+            }
+        )
 
     wandb.log(
         {
