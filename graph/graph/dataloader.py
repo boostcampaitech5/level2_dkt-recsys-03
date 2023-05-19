@@ -55,12 +55,15 @@ class GraphDataModule(L.LightningDataModule):
 
             self.valid_data = {
                 "edge": torch.stack([self.data["edge"][0][val_idx], self.data["edge"][1][val_idx]]),
-                "label": self.data["label"][val_idx],
+                "label": self.data["label"][val_idx]
             }
 
         if stage == "predict" or stage is None:
             te_idx = [self.data["label"] == -1]
-            self.test_data = {"edge": torch.stack([self.data["edge"][0][te_idx], self.data["edge"][1][te_idx]]), "label": self.data["label"][te_idx]}
+            self.test_data = {
+                "edge": torch.stack([self.data["edge"][0][te_idx],self.data["edge"][1][te_idx]]), 
+                "label": self.data["label"][te_idx]
+            }
 
     def train_dataloader(self):
         trainset = GraphDataset(self.train_data)
