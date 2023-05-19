@@ -5,24 +5,12 @@ program: main.py
 method: grid
 metric:
   goal: maximize
-  name: val_auc
+  name: tr_auc/tr_acc
 parameters:
   model:
-    values: [GPT2]
+    values: [LSTM]
   trainer.epoch:
-    values: [100]
-  trainer.lr:
-    values: [0.001]
-  trainer.weight_decay:
-    values: [0.0001]
-
-  
-  data.augmentation:
-    values: [True]
-  data.stride:
-    values: [15]
-  data.max_seq_len:
-    values: [20]
+    values: [10, 20, 30]
 
 command:
 - ${env}
