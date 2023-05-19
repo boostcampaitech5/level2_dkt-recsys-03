@@ -10,7 +10,7 @@ data_version: False
 
 skip_data_processing: False
 
-is_submit: False
+is_submit: True
 
 cv_strategy: kfold
 
