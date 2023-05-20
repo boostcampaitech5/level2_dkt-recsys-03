@@ -103,9 +103,14 @@ class Trainer:
             )
         elif self.config.model.name == "Catboost":
             cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype == "category"]
-            params = (OmegaConf.to_container(self.config.model.params),)
-
-            model = CBclass(**params, task_type="GPU", cat_features=cat_list, random_seed=self.config.seed, bootstrap_type="MVS", verbose=100)
+            model = CBclass(
+                params=OmegaConf.to_container(self.config.model.params),
+                task_type="GPU",
+                cat_features=cat_list,
+                random_seed=self.config.seed,
+                bootstrap_type="MVS",
+                verbose=100,
+            )
             model = model.fit(
                 train.X,
                 train.y,
@@ -232,10 +237,10 @@ class CrossValidationTrainer(Trainer):
                 raise ValueError
 
             if self.config.model.name == "LGBM":
-                save_path = self.get_model_txt_path()
+                save_path = self.get_model_txt_path(fold=str(i))
                 model.save_model(save_path, num_iteration=model.best_iteration)
             elif self.config.model.name == "Catboost":
-                save_path = self.get_model_cbm_path()
+                save_path = self.get_model_cbm_path(fold=str(i))
                 model.save_model(save_path)
 
             wandb.save(save_path)
@@ -275,7 +280,7 @@ class CrossValidationTrainer(Trainer):
                 test_prob = model.predict(test.X)
 
             elif self.config.model.name == "Catboost":
-                load_path = self.get_model_cbm_path()
+                load_path = self.get_model_cbm_path(fold=str(i))
                 model = CBclass()
                 model.load_model(fname=load_path, format="cbm")
                 test_prob = model.predict_proba(test.X)[:, 1]
