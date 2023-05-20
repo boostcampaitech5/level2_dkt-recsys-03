@@ -154,7 +154,7 @@ class DKTDataModule(pl.LightningDataModule):
         self.train_data = data[:size]
         self.valid_data = data[size:]
 
-    def augemtation(self, data: pd.DataFrame) -> pd.DataFrame:
+    def augmentation(self, data: pd.DataFrame) -> pd.DataFrame:
         window_size = self.config.data.max_seq_len
         stride = self.config.data.stride
         wandb.log({"stride": stride})
@@ -175,6 +175,7 @@ class DKTDataModule(pl.LightningDataModule):
                 total_window = ((cnt - window_size) // stride) + 1
                 for window_i in range(total_window):
                     aug = seq.iloc[cnt - (window_i * stride + window_size) : cnt - (window_i * stride), :]
+                    aug["userID"] = [n_id] * window_size
                     augmented_data += aug.values.tolist()
                     n_id += 1
 
@@ -202,8 +203,8 @@ class DKTDataModule(pl.LightningDataModule):
             wandb.log({"augmentation": self.config.data.augmentation})
             print("----------------- DATA AUGMENTATION -----------------")
             before = train.userID.nunique()
-            self.df = self.augemtation(train)
-            print(f"before augmetation : {before} --> after augmentation : {self.df.userID.nunique()}")
+            self.df = self.augmentation(train)
+            print(f"before augmentation : {before} --> after augmentation : {self.df.userID.nunique()}")
         else:
             self.df = train
 
