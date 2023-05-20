@@ -9,4 +9,4 @@ params:
   early_stopping_rounds: 30
   bagging_temperature: 0.5
   border_count: 32 
-  verbose: 100
+  
