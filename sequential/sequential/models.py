@@ -48,7 +48,7 @@ def set_logging(config: DictConfig) -> None:
 
     wandb.log({"model_name": config.model.model_name})
 
-    if config.model.model_name in ["LSTM", "LSTMATTN", "BERT", "LQTR"]:
+    if config.model.model_name in ["LSTM", "LSTMATTN", "BERT", "LQTR", "GPT2"]:
         wandb.log(
             {
                 "hidden_dim": config.model.hidden_dim,
@@ -71,7 +71,7 @@ def set_logging(config: DictConfig) -> None:
             }
         )
 
-    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR", "SAINT_PLUS"]:
+    if config.model.model_name in ["LSTMATTN", "BERT", "LQTR", "SAINT_PLUS", "GPT2"]:
         wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
 
     if config.model.model_name in ["LQRT"]:
