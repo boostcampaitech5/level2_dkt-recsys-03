@@ -500,6 +500,9 @@ class SAINTPLUS(LightningClass):
         # fully connected layer
         self.fc = nn.Linear(self.embed_dims, 1)
 
+        # wandb logging
+        set_logging(self.config)
+
         # logs
         self.training_step_outputs = []
         self.validation_step_outputs = []
