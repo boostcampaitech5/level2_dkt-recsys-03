@@ -102,7 +102,7 @@ class Trainer:
                 ],
             )
         elif self.config.model.name == "Catboost":
-            cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype != "float"]
+            cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype == "category"]
             params = (OmegaConf.to_container(self.config.model.params),)
 
             model = CBclass(**params, task_type="GPU", cat_features=cat_list, random_seed=self.config.seed, bootstrap_type="MVS", verbose=100)
