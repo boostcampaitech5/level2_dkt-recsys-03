@@ -18,11 +18,16 @@ jobs:
       with: 
         python-version: '3.10'
       
-    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
-      run: |
-        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
-        mkdir -p ~/input/data
-        tar -zxvf data.tar.gz -C ~/input
+    # - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+    #   run: |
+    #     wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+    #     mkdir -p ~/input/data
+    #     tar -zxvf data.tar.gz -C ~/input
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-seq-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -46,11 +51,16 @@ jobs:
       with: 
         python-version: '3.10'
 
-    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
-      run: |
-        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
-        mkdir -p ~/input/data
-        tar -zxvf data.tar.gz -C ~/input
+    # - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+    #   run: |
+    #     wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+    #     mkdir -p ~/input/data
+    #     tar -zxvf data.tar.gz -C ~/input
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-graph-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
@@ -74,11 +84,16 @@ jobs:
       with: 
         python-version: '3.10'
       
-    - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
-      run: |
-        wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
-        mkdir -p ~/input/data
-        tar -zxvf data.tar.gz -C ~/input
+    # - name: download dataset # Iscream-Edu dataset / CC-BY 2.0
+    #   run: |
+    #     wget https://aistages-prod-server-public.s3.amazonaws.com/app/Competitions/000240/data/data.tar.gz
+    #     mkdir -p ~/input/data
+    #     tar -zxvf data.tar.gz -C ~/input
+
+    - uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-tab-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}
 
     - name: install dependencies 
       working-directory: ${{ env.working-directory }}
