@@ -1,0 +1,5 @@
+#path to data directory
+data_dir: ../dummy/data/
+
+#path to output directory
+output_dir: output/

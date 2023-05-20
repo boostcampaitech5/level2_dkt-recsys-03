@@ -5,7 +5,7 @@ defaults:
   - _self_
   - model: LightGCN.yaml
   - data: default.yaml
-  - paths: default.yaml
+  - paths: test.yaml
   - trainer: test.yaml
   - wandb: default.yaml
   - sweep: default.yaml

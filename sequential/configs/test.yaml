@@ -3,7 +3,7 @@ timestamp:
 
 defaults:
   - _self_
-  - paths: default.yaml
+  - paths: test.yaml
   - data: test.yaml
   - trainer: test.yaml
   - wandb: default.yaml
