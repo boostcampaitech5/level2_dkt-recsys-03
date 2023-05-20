@@ -25,7 +25,7 @@ def __main(config: omegaconf.DictConfig = None) -> None:
     run = wandb.init(project=config.wandb.project, entity=config.wandb.entity, name=config.wandb.name)
     run.tags = [config.model.name, config.cv_strategy]
     wandb.save("./configs/config.yaml")
-    wandb.save("./configs/model/LGBM.yaml")
+    wandb.save("./configs/model/" + config.model.name + ".yaml")
 
     # setup datamodule
     print("--------------- Setup datamodule ---------------")
