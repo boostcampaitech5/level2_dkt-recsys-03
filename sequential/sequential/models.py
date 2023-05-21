@@ -357,6 +357,8 @@ class BERT(ModelBase):
             num_hidden_layers=self.n_layers,
             num_attention_heads=self.n_heads,
             max_position_embeddings=self.max_seq_len,
+            hidden_dropout_prob=self.drop_out,
+            attention_probs_dropout_prob=self.drop_out,
         )
         self.encoder = BertModel(self.bert_config)  # Transformer Encoder
 
@@ -390,6 +392,9 @@ class GPT2(ModelBase):
             n_layer=self.n_layers,
             n_head=self.n_heads,
             n_positions=self.max_seq_len,
+            resid_pdrop=self.drop_out,
+            embd_pdrop=self.drop_out,
+            attn_pdrop=self.drop_out,
         )
         self.encoder = GPT2Model(self.gpt2_config)  # Transformer Encoder
 
@@ -609,7 +614,6 @@ class LQTR(ModelBase):
             X = X + embed_pos
 
         # Encoder
-
         q = self.query(X).permute(1, 0, 2)
         q = self.query(X)[:, -1:, :].permute(1, 0, 2)
 
@@ -633,13 +637,11 @@ class LQTR(ModelBase):
         out = X + out
         out = self.ln2(out)
 
-        # LSTM
-
+        # LST
         hidden = self.init_hidden(batch_size)
         out, hidden = self.lstm(out, hidden)
 
         # DNN
-
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
         out = self.fc(out).view(batch_size, -1)
 
