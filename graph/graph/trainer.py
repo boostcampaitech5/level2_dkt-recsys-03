@@ -40,11 +40,11 @@ class Trainer:
         # https://velog.io/@khs0415p/pytorch-lightning
         wandb.save(checkpoint.best_model_path)
 
-        """if self.model_name == "LightGCN":
-            final_model = LightGCNNet(config=self.config).load_from_checkpoint(model_path)
+        if self.model_name == "LightGCN":
+            final_model = LightGCNNet.load_from_checkpoint(checkpoint.best_model_path, config=self.config)
             final_model.eval()
-            final_model.freeze()"""
-        predictions = trainer.predict(self.model, datamodule=self.dm)
+            final_model.freeze()
+        predictions = trainer.predict(final_model, self.dm)
         submission = pd.read_csv(self.config.paths.data_path + "sample_submission.csv")
 
         # get predicted values from the list
