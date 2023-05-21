@@ -4,6 +4,8 @@ import wandb
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
+from catboost import CatBoostClassifier as CBclass
+from xgboost import XGBClassifier
 from typing import List, Tuple
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
@@ -26,6 +28,20 @@ class Trainer:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         os.makedirs(directory, exist_ok=True)
         filename = f"{self.config.timestamp}_{fold}.txt"
+        path = os.path.join(directory, filename)
+        return path
+
+    def get_model_cbm_path(self, fold="") -> str:
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
+        os.makedirs(directory, exist_ok=True)
+        filename = f"{self.config.timestamp}_{fold}.cbm"
+        path = os.path.join(directory, filename)
+        return path
+
+    def get_model_xgb_path(self, fold="") -> str:
+        directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
+        os.makedirs(directory, exist_ok=True)
+        filename = f"{self.config.timestamp}_{fold}.json"
         path = os.path.join(directory, filename)
         return path
 
@@ -54,9 +70,7 @@ class Trainer:
         path = os.path.join(directory, filename)
         return pd.read_csv(path)
 
-    def make_result_df(
-        self, user_ids: List, prob: np.ndarray, true: pd.Series
-    ) -> pd.DataFrame:
+    def make_result_df(self, user_ids: List, prob: np.ndarray, true: pd.Series) -> pd.DataFrame:
         result = pd.DataFrame(
             {
                 "userID": user_ids,
@@ -67,9 +81,7 @@ class Trainer:
         )
         return result
 
-    def save_result_csv(
-        self, result: pd.DataFrame, fold="", subset: str = "valid"
-    ) -> None:
+    def save_result_csv(self, result: pd.DataFrame, fold="", subset: str = "valid") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
         save_path = os.path.join(directory, filename)
@@ -97,25 +109,69 @@ class Trainer:
                     lgb.early_stopping(stopping_rounds=5),
                 ],
             )
+        elif self.config.model.name == "Catboost":
+            cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype == "category"]
+            model = CBclass(
+                params=OmegaConf.to_container(self.config.model.params),
+                task_type="CPU",
+                cat_features=cat_list,
+                random_seed=self.config.seed,
+                bootstrap_type="MVS",
+                verbose=100,
+            )
+            model = model.fit(
+                train.X,
+                train.y,
+                use_best_model=True,
+                eval_set=(valid.X, valid.y),
+                early_stopping_rounds=10,
+            )
+        elif self.config.model.name == "XGboost":
+            model = XGBClassifier(
+                **OmegaConf.to_container(self.config.model.params),
+                random_state=self.config.seed,
+                early_stopping_rounds=5,
+                callbacks=[wandb.xgboost.WandbCallback()],
+                enable_categorical=True,
+                tree_method="hist",
+            )
+            model.fit(train.X, train.y, eval_set=[(valid.X, valid.y)])
+        else:
+            raise ValueError
 
+        if self.config.model.name == "LGBM":
             save_path = self.get_model_txt_path()
             model.save_model(save_path, num_iteration=model.best_iteration)
-            wandb.save(save_path)
+        elif self.config.model.name == "Catboost":
+            save_path = self.get_model_cbm_path()
+            model.save_model(save_path)
+        elif self.config.model.name == "XGboost":
+            save_path = self.get_model_xgb_path()
+            model.save_model(save_path)
 
-            train_prob: np.ndarray = model.predict(
-                train.X, num_iteration=model.best_iteration
-            )
-            valid_prob: np.ndarray = model.predict(
-                valid.X, num_iteration=model.best_iteration
-            )
+        wandb.save(save_path)
 
+        if self.config.model.name == "LGBM":
+            train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+            valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
+        elif self.config.model.name == "Catboost":
+            train_prob: np.ndarray = model.predict_proba(train.X)[:, 1]
+            valid_prob: np.ndarray = model.predict_proba(valid.X)[:, 1]
+        elif self.config.model.name == "XGboost":
+            train_prob: np.ndarray = model.predict_proba(train.X)[:, 1]
+            valid_prob: np.ndarray = model.predict_proba(valid.X)[:, 1]
+
+        if self.config.model.name == "LGBM":
             wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
+        elif self.config.model.name == "Catboost":
+            wandb.catboost.log_summary(model, save_model_checkpoint=True)
+        elif self.config.model.name == "XGboost":
+            pass  # wandb doesn't support log_summary for XGBoost model
+            # wandb.xgboost.log_summary(model, save_model_checkpoint=True)
 
         train_auc, train_acc = get_metric(train.y, train_prob)
         valid_auc, valid_acc = get_metric(valid.y, valid_prob)
-        print(
-            f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}"
-        )
+        print(f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
         result = self.make_result_df(valid.user_id, valid_prob, valid.y)
         self.save_result_csv(result, subset="valid")
@@ -126,8 +182,15 @@ class Trainer:
         if self.config.model.name == "LGBM":
             load_path = self.get_model_txt_path()
             model = lgb.Booster(model_file=load_path)
-
             test_prob = model.predict(test.X)
+        elif self.config.model.name == "Catboost":
+            load_path = self.get_model_cbm_path()
+            model = CBclass.load_model(model_file=load_path, format="cbm")
+            test_prob = model.predict_proba(test.X)[:, 1]
+        elif self.config.model.name == "XGboost":
+            load_path = self.get_model_xgb_path()
+            model = XGBClassifier.load_model(model_file=load_path)
+            test_prob = model.predict_proba(test.X)[:, 1]
 
         if self.config.is_submit == True:
             submission = self.get_sample_submission_csv()
@@ -180,28 +243,74 @@ class CrossValidationTrainer(Trainer):
                         lgb.early_stopping(stopping_rounds=5),
                     ],
                 )
+            elif self.config.model.name == "Catboost":
+                cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype == "category"]
+                params = OmegaConf.to_container(self.config.model.params)
 
+                model = CBclass(
+                    **params,
+                    task_type="CPU",
+                    cat_features=cat_list,
+                    random_seed=self.config.seed,
+                    bootstrap_type="MVS",
+                )
+
+                model = model.fit(
+                    train.X,
+                    train.y,
+                    use_best_model=True,
+                    eval_set=(valid.X, valid.y),
+                    early_stopping_rounds=10,
+                )
+            elif self.config.model.name == "XGboost":
+                model = XGBClassifier(
+                    **OmegaConf.to_container(self.config.model.params),
+                    random_state=self.config.seed,
+                    early_stopping_rounds=5,
+                    callbacks=[wandb.xgboost.WandbCallback()],
+                    enable_categorical=True,
+                    tree_method="hist",
+                )
+                model.fit(train.X, train.y, eval_set=[(valid.X, valid.y)])
+            else:
+                raise ValueError
+
+            if self.config.model.name == "LGBM":
                 save_path = self.get_model_txt_path(fold=str(i))
                 model.save_model(save_path, num_iteration=model.best_iteration)
-                wandb.save(save_path)
+            elif self.config.model.name == "Catboost":
+                save_path = self.get_model_cbm_path(fold=str(i))
+                model.save_model(save_path)
+            elif self.config.model.name == "XGboost":
+                save_path = self.get_model_xgb_path(fold=str(i))
+                model.save_model(save_path)
 
-                train_prob: np.ndarray = model.predict(
-                    train.X, num_iteration=model.best_iteration
-                )
-                valid_prob: np.ndarray = model.predict(
-                    valid.X, num_iteration=model.best_iteration
-                )
+            wandb.save(save_path)
 
-                train_auc, train_acc = get_metric(train.y, train_prob)
-                valid_auc, valid_acc = get_metric(valid.y, valid_prob)
-                print(
-                    f"fold: {i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}"
-                )
+            if self.config.model.name == "LGBM":
+                train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+                valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
+            elif self.config.model.name == "Catboost":
+                train_prob: np.ndarray = model.predict_proba(train.X)[:, 1]
+                valid_prob: np.ndarray = model.predict_proba(valid.X)[:, 1]
+            elif self.config.model.name == "XGboost":
+                train_prob: np.ndarray = model.predict_proba(train.X)[:, 1]
+                valid_prob: np.ndarray = model.predict_proba(valid.X)[:, 1]
 
-                cv_score += valid_auc / 5
+            train_auc, train_acc = get_metric(train.y, train_prob)
+            valid_auc, valid_acc = get_metric(valid.y, valid_prob)
+            print(f"fold: {i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
+
+            cv_score += valid_auc / 5
 
             if i == 4:
-                wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
+                if self.config.model.name == "LGBM":
+                    wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
+                elif self.config.model.name == "Catboost":
+                    wandb.catboost.log_summary(model, save_model_checkpoint=True)
+                elif self.config.model.name == "XGboost":
+                    pass  # wandb doesn't support log_summary for XGBoost model
+                    # wandb.xgboost.log_summary(model, save_model_checkpoint=True)
 
             result = self.make_result_df(valid.user_id, valid_prob, valid.y)
             self.save_result_csv(result, fold=str(i), subset="valid")
@@ -216,9 +325,20 @@ class CrossValidationTrainer(Trainer):
             if self.config.model.name == "LGBM":
                 load_path = self.get_model_txt_path(fold=str(i))
                 model = lgb.Booster(model_file=load_path)
-
                 test_prob = model.predict(test.X)
-                probs.append(test_prob)
+            elif self.config.model.name == "Catboost":
+                load_path = self.get_model_cbm_path(fold=str(i))
+                model = CBclass()
+                model.load_model(fname=load_path, format="cbm")
+                test_prob = model.predict_proba(test.X)[:, 1]
+            elif self.config.model.name == "XGboost":
+                load_path = self.get_model_xgb_path(fold=str(i))
+                model = XGBClassifier()
+                model.load_model(fname=load_path)
+                test_prob = model.predict_proba(test.X)[:, 1]
+
+            probs.append(test_prob)
+
         test_prob, test_pred = self.soft_voting(np.array(probs))
 
         if self.config.is_submit == True:

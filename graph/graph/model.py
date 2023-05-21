@@ -54,9 +54,12 @@ class LightGCNNet(L.LightningModule):
 
         acc = accuracy_score(y_true=label, y_pred=(pred > 0.5))
         auc = roc_auc_score(y_true=label, y_score=pred)
+
+        self.log("val_loss", loss)
+
         valid_metrics = {"val_loss": loss, "val_auc": torch.tensor(auc), "val_acc": torch.tensor(acc)}
         self.valid_step_outputs.append(valid_metrics)
-        return {"auc": auc, "acc": acc, "loss": loss}
+        return {"val_loss": loss, "val_auc": torch.tensor(auc), "val_acc": torch.tensor(acc)}
 
     def on_train_epoch_end(self):
         avg_loss = torch.stack([x["tr_loss"] for x in self.training_step_outputs]).mean()
@@ -73,6 +76,8 @@ class LightGCNNet(L.LightningModule):
 
         wandb.log({"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc})
         self.valid_step_outputs.clear()
+
+        return {"val_loss": avg_loss, "val_auc": avg_auc, "val_acc": avg_acc}
 
     def predict_step(self, batch, batch_idx):
         edge_index, _ = batch

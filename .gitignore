@@ -23,6 +23,7 @@ log
 DKT_Sequential/
 graph/lightning_logs/
 sequential/lightning_logs/
+tabular/catboost_info
 
 
 # MacOS

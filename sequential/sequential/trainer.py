@@ -1,6 +1,7 @@
 import os
 import wandb
 import torch
+import math
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -112,6 +113,8 @@ class KfoldTrainer(Trainer):
         # K-fold Cross Validation
         for fold, (tra_idx, val_idx) in enumerate(kf.split(tr_dataset)):
             print(f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------")
+            self.config.trainer.total_steps = math.ceil(len(tra_idx) / self.config.data.batch_size) * self.config.trainer.epoch
+            self.config.trainer.warmup_steps = self.config.trainer.total_steps // 10
 
             # create model for cv
             self.fold_model = self.load_model()

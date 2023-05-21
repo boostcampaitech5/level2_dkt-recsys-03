@@ -1,11 +1,14 @@
 # epoch for training
-epoch: 3
+epoch: 10
 
 # optimizer
 optimizer: adam
 
 # learning rate
-lr: 0.0001
+lr: 0.01
 
 # log steps
 steps: 1
+
+# patience for early stopping
+patience : 5
