@@ -684,7 +684,7 @@ class LQTR(ModelBase):
         out = X + out
         out = self.ln2(out)
 
-        # LST
+        # LSTM
         hidden = self.init_hidden(batch_size)
         out, hidden = self.lstm(out, hidden)
 
