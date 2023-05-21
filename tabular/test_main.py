@@ -1,9 +1,24 @@
 import os
 import hydra
 import omegaconf
+import xgboost as xgb
 from omegaconf import DictConfig
 from unittest.mock import patch, MagicMock
 from main import __main
+
+
+class FakeXbgTraningCallback(xgb.callback.TrainingCallback):
+    def before_training(self, model):
+        return model
+
+    def after_training(self, model):
+        return model
+
+    def before_iteration(self, model, epoch: int, evals_log) -> bool:
+        return False
+
+    def after_iteration(self, model, epoch: int, evals_log) -> bool:
+        return False
 
 
 @patch("wandb.init")
@@ -13,6 +28,7 @@ from main import __main
 @patch("wandb.save")
 @patch("wandb.lightgbm")
 @patch("wandb.catboost")
+@patch("wandb.xgboost.WandbCallback", new=FakeXbgTraningCallback)
 @patch("wandb.run", new=MagicMock())
 @patch("wandb.plot.confusion_matrix", new=MagicMock())
 def test_main(*args, **kwargs):

@@ -18,6 +18,8 @@ weight_decay: 0.01
 
 # learning rate scheduler
 scheduler: plateau
+total_steps:
+warmup_steps:
 
 # early stopping patience
 patience: 3

@@ -1,3 +1,4 @@
+import re
 import torch
 import wandb
 import numpy as np
@@ -68,14 +69,12 @@ def set_logging(config: DictConfig) -> None:
                 "n_questions": config.model.n_questions,
                 "n_tags": config.model.n_tags,
                 "n_test_types": config.model.n_test_types,
+                "T-fix": config.model.tfixup,
             }
         )
 
     if config.model.model_name in ["LSTMATTN", "BERT", "LQTR", "SAINT_PLUS", "GPT2"]:
         wandb.log({"n_heads": config.model.n_heads, "drop_out": config.model.drop_out})
-
-    if config.model.model_name in ["LQRT"]:
-        wandb.log({"POS": config.model.POS})
 
 
 class LightningClass(pl.LightningModule):
@@ -478,6 +477,7 @@ class SAINTPLUS(LightningClass):
         self.n_decoder = self.config.model.n_decoder
         self.embed_dims = self.config.model.embed_dims
         self.ffn_dim = self.embed_dims * 4
+        self.tfixup = self.config.model.tfixup
 
         # Embedding
         self.encoder_embedding = EncoderEmbedding(
@@ -488,19 +488,24 @@ class SAINTPLUS(LightningClass):
             n_dims=self.embed_dims,
             seq_len=self.seq_len,
         )
+        set_logging(self.config)
 
         self.decoder_embedding = DecoderEmbedding(n_responses=4, n_dims=self.embed_dims, seq_len=self.seq_len)
 
         # transformer
-        self.transformer = nn.Transformer(
-            d_model=self.embed_dims,
-            nhead=self.n_heads,
-            num_encoder_layers=self.n_decoder,
-            num_decoder_layers=self.n_decoder,
-            dim_feedforward=self.ffn_dim,
-            dropout=self.drop_out,
-            batch_first=True,
-        )
+        if self.tfixup:
+            self.encoder = nn.TransformerEncoder(nn.TransformerEncoderLayer(self.embed_dims, self.n_heads, batch_first=True), self.n_decoder)
+            self.decoder = nn.TransformerDecoder(nn.TransformerDecoderLayer(self.embed_dims, self.n_heads, batch_first=True), self.n_decoder)
+        else:
+            self.transformer = nn.Transformer(
+                d_model=self.embed_dims,
+                nhead=self.n_heads,
+                num_encoder_layers=self.n_decoder,
+                num_decoder_layers=self.n_decoder,
+                dim_feedforward=self.ffn_dim,
+                dropout=self.drop_out,
+                batch_first=True,
+            )
 
         # fully connected layer
         self.fc = nn.Linear(self.embed_dims, 1)
@@ -516,6 +521,60 @@ class SAINTPLUS(LightningClass):
         self.tr_result = []
         self.val_result = []
 
+        # T-Fixup
+        if self.tfixup:
+            # 초기화 (Initialization)
+            self.tfixup_initialization()
+            print("******** T-Fixup Initialization Done ********")
+
+            # 스케일링 (Scaling)
+            self.tfixup_scaling()
+            print(f"******** T-Fixup Scaling Done ********")
+
+    def tfixup_initialization(self):
+        # 우리는 padding idx의 경우 모두 0으로 통일한다
+        padding_idx = 0
+
+        for name, param in self.named_parameters():
+            if re.match(r".*embedding*", name):
+                nn.init.normal_(param, mean=0, std=param.shape[1] ** -0.5)
+                nn.init.constant_(param[padding_idx], 0)
+            elif re.match(r".*linear*|.*bn.*", name) or len(param.shape) < 2:
+                continue
+            elif re.match(r".*weight*", name):
+                # nn.init.xavier_uniform_(param)
+                nn.init.xavier_normal_(param)
+
+    def tfixup_scaling(self):
+        temp_state_dict = {}
+
+        # 특정 layer들의 값을 스케일링한다
+        for name, param in self.named_parameters():
+            # TODO: 모델 내부의 module 이름이 달라지면 직접 수정해서
+            #       module이 scaling 될 수 있도록 변경해주자
+            # input case
+            if re.match(r".*embedding*", name):
+                temp_state_dict[name] = (9 * self.n_decoder) ** (-1 / 4) * param
+            # encoder attention block의 value matrice
+            elif re.match(r"encoder.*ffn.*weight$|encoder.*attn.out_proj.weight$", name):
+                temp_state_dict[name] = (0.67 * (self.n_encoder) ** (-1 / 4)) * param
+            # encoder MLP block의 weight matrices
+            elif re.match(r"encoder.*value.weight$", name):
+                temp_state_dict[name] = (0.67 * (self.n_encoder) ** (-1 / 4)) * (param * (2**0.5))
+            # decoder attention block의 value matrice
+            elif re.match(r"decoder.*ffn.*weight$|decoder.*attn.out_proj.weight$", name):
+                temp_state_dict[name] = (9 * self.n_decoder) ** (-1.0 / 4.0) * param
+            # decoder MLP block의 weight matrices
+            elif re.match(r"decoder.*value.weight$", name):
+                temp_state_dict[name] = (9 * self.n_decoders) ** (-1.0 / 4.0) * (param * (2**0.5))
+
+        # 나머지 layer는 원래 값 그대로 넣는다
+        for name in self.state_dict():
+            if name not in temp_state_dict:
+                temp_state_dict[name] = self.state_dict()[name]
+
+        self.load_state_dict(temp_state_dict)
+
     def forward(self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs):  # kwargs is not used
         device = question.device
 
@@ -529,14 +588,17 @@ class SAINTPLUS(LightningClass):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-
-            decoder_output = self.transformer(
-                src=enc,  # encoder seq
-                tgt=dec,  # decoder seq
-                src_mask=mask,
-                tgt_mask=mask,
-                memory_mask=mask,
-            )
+            if self.tfixup:
+                encoder_output = self.encoder(src=enc, mask=mask)
+                decoder_output = self.decoder(tgt=dec, memory=encoder_output, tgt_mask=mask, memory_mask=mask)
+            else:
+                decoder_output = self.transformer(
+                    src=enc,  # encoder seq
+                    tgt=dec,  # decoder seq
+                    src_mask=mask,
+                    tgt_mask=mask,
+                    memory_mask=mask,
+                )
 
         # fully connected layer
         out = self.fc(decoder_output)
@@ -564,9 +626,6 @@ class LQTR(ModelBase):
         self.drop_out = self.config.model.drop_out
         self.max_seq_len = self.config.data.max_seq_len
 
-        # POS embedding
-        self.embedding_position = nn.Embedding(self.max_seq_len, self.hidden_dim)
-
         # Transformer Encoder
         self.query = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
         self.key = nn.Linear(in_features=self.hidden_dim, out_features=self.hidden_dim)
@@ -591,10 +650,6 @@ class LQTR(ModelBase):
 
         return (h, c)
 
-    def get_pos(self, seq_len):
-        # use sine positional embeddinds
-        return torch.arange(seq_len).unsqueeze(0)
-
     def forward(self, test, question, tag, correct, mask, interaction, **kwargs):  # kwargs is not used
         X, batch_size = super().forward(
             test=test,
@@ -604,14 +659,6 @@ class LQTR(ModelBase):
             mask=mask,
             interaction=interaction,
         )
-
-        seq_len = interaction.size(1)
-
-        # case : POS embedding use
-        if self.config.model.POS:
-            position = self.get_pos(seq_len).to("cuda")
-            embed_pos = self.embedding_position(position)
-            X = X + embed_pos
 
         # Encoder
         q = self.query(X).permute(1, 0, 2)

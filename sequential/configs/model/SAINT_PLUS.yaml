@@ -5,6 +5,7 @@ n_decoder: 2
 n_heads: 2
 embed_dims: 64
 drop_out: 0.1
+tfixup: True
 
 n_tests: 1538
 n_questions: 9455
