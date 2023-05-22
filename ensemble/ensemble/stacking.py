@@ -8,9 +8,11 @@ from .utils import rmse
 
 
 class Stacking:
-    def __init__(self, filenames: list, filepath: str):
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float):
         self.filenames = filenames
         self.filepath = filepath
+        self.seed = seed
+        self.test_size = test_size
 
         self.model = LinearRegression()  # stacking model
 
@@ -25,13 +27,13 @@ class Stacking:
         for path in valid_path:
             self.valid_pred_list.append(pd.read_csv(path)["prediction"].to_list())
 
-    def train(self, seed, test_size=0.5):
+    def train(self):
         X = np.transpose(self.valid_pred_list)
         y = self.valid_labels
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=seed)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.test_size, random_state=self.seed)
 
-        self.model(X_train, y_train)  # training model
+        self.model.fit(X_train, y_train)  # training model
 
         test_pred = self.model.predict(X_test)  # testing model
         loss = rmse(test_pred, y_test)
