@@ -14,6 +14,8 @@ is_submit: True
 
 cv_strategy: kfold
 
+k: 5
+
 seed: 42
 
 timestamp:

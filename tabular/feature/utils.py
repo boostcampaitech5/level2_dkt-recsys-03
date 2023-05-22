@@ -28,24 +28,25 @@ def get_feature_dtype() -> Dict:
         "userID": "category",
         "testId": "category",
         "assessmentItemID": "category",
-        "answerCode": "int8",
+        "answerCode": "int",
         "KnowledgeTag": "category",
         # derived
-        "UserAcc": "float16",
-        "UserTag1Acc": "float16",
-        "UserTag2Acc": "float16",
-        "UserLastTag1Correct": "int8",
-        "UserLastTag2Correct": "int8",
-        "ItemNumScaled": "float16",
-        "Tag1Acc": "float16",
-        "Tag2Acc": "float16",
-        "UserTestRetakeCnt": "int8",
+        "UserAcc": "float",
+        "UserTag1Acc": "float",
+        "UserTag2Acc": "float",
+        "UserLastTag1Correct": "int",
+        "UserLastTag2Correct": "int",
+        "ItemNumScaled": "float",
+        "Tag1Acc": "float",
+        "Tag2Acc": "float",
+        "UserTestRetakeCnt": "int",
         "Tag2": "category",
-        "UserRecency1": "int8",
-        "UserRecency2": "int8",
-        "UserRecency3": "int8",
-        "UserRecency4": "int8",
-        "UserRecency5": "int8",
+        "UserRecency1": "int",
+        "UserRecency2": "int",
+        "UserRecency3": "int",
+        "UserRecency4": "int",
+        "UserRecency5": "int",
+        "UserSolveCnt": "int",
     }
     return dtype
 
@@ -65,8 +66,6 @@ def get_feature_dtype_for_lgbm() -> Dict:
         "UserLastTag1Correct": "int",
         "UserLastTag2Correct": "int",
         "ItemNumScaled": "float",
-        "Tag1Acc": "float",
-        "Tag2Acc": "float",
         "UserTestRetakeCnt": "int",
         "Tag2": "category",
         "UserRecency1": "int",
@@ -74,6 +73,7 @@ def get_feature_dtype_for_lgbm() -> Dict:
         "UserRecency3": "int",
         "UserRecency4": "int",
         "UserRecency5": "int",
+        "UserSolveCnt": "int",
     }
     return dtype
 
@@ -118,5 +118,7 @@ def get_feature_generator(name: str):
         return G.UserRecency4()
     elif name == "UserRecency5":
         return G.UserRecency5()
+    elif name == "UserSolveCnt":
+        return G.UserSolveCnt()
     else:
         raise NotImplementedError

@@ -9,8 +9,6 @@ features:
   - UserLastTag1Correct
   - UserLastTag2Correct
   - ItemNumScaled
-  - Tag1Acc
-  - Tag2Acc
   - UserTestRetakeCnt
   - Tag2
   - UserRecency1
@@ -18,3 +16,4 @@ features:
   - UserRecency3
   - UserRecency4
   - UserRecency5
+  - UserSolveCnt

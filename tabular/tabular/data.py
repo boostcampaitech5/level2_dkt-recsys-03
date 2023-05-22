@@ -35,9 +35,9 @@ class TabularDataModule:
         train_data: pd.DataFrame = self.load_data_file(self.data_dir + "train_data.csv")
 
         if self.config.is_submit == True:
-            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "test_data.csv")
+            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "test_data.csv", is_test=True)
         else:
-            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv")
+            test_data: pd.DataFrame = self.load_data_file(self.data_dir + "valid_data.csv", is_test=True)
 
         # data preprocessing
         self.train_data = self.preprocessing(train_data)
@@ -131,7 +131,7 @@ class TabularDataModule:
             self.valid_data.to_csv(f"{dir}valid_data.csv", index=False)
 
         elif self.cv_strategy == "kfold":
-            for i in range(5):
+            for i in range(self.config.k):
                 # sort data
                 self.train_data[i].sort_values(by=["userID", "Timestamp"], inplace=True)
                 self.valid_data[i].sort_values(by=["userID", "Timestamp"], inplace=True)
@@ -154,9 +154,9 @@ class TabularDataModule:
     def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         전처리
-        - userID, Timestamp 기준 오름차순 정렬
+        - 이상치 제거
         """
-        df.sort_values(by=["userID", "Timestamp"], inplace=True)
+        df = df[df["userID"] != "481"].reset_index(drop=True)
         return df
 
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -191,8 +191,6 @@ class TabularDataModule:
         - config.paths.data_dir에 있는 데이터 파일들을 불러옵니다.
         - 데이터 처리 작업을 생략하고 바로 _data, _dataset 인스턴스 변수들에 값을 할당합니다.
         """
-        data_dir = self.config.paths.data_dir
-
         if self.cv_strategy == "holdout":
             self.train_data = self.load_data_file(self.data_dir + "train_data.csv")
             self.valid_data = self.load_data_file(self.data_dir + "valid_data.csv")
@@ -201,8 +199,8 @@ class TabularDataModule:
             self.valid_dataset = TabularDataset(self.config, self.valid_data)
 
         elif self.cv_strategy == "kfold":
-            self.train_data = [self.load_data_file(self.data_dir + "train_data.csv", i) for i in range(5)]
-            self.valid_data = [self.load_data_file(self.data_dir + "valid_data.csv", i) for i in range(5)]
+            self.train_data = [self.load_data_file(self.data_dir + "train_data.csv", i) for i in range(self.config.k)]
+            self.valid_data = [self.load_data_file(self.data_dir + "valid_data.csv", i) for i in range(self.config.k)]
 
             self.train_dataset = [TabularDataset(self.config, df) for df in self.train_data]
             self.valid_dataset = [TabularDataset(self.config, df) for df in self.valid_data]
@@ -213,15 +211,16 @@ class TabularDataModule:
 
 class TabularDataSplitter:
     def __init__(self, config: DictConfig):
+        self.config = config
         self.cv_strategy: str = config.cv_strategy
 
-    def split_data(self, df: pd.DataFrame, k=5):
+    def split_data(self, df: pd.DataFrame):
         """
         데이터 분할
         - train_data를 입력받아 config.cv_startegy에 기반하여 데이터 분할을 수행합니다.
         - GroupKFold를 사용하여 유저 단위로 데이터를 분할 합니다.
         """
-        splitter = GroupKFold(n_splits=k)
+        splitter = GroupKFold(n_splits=self.config.k)
         train_dataset, valid_dataset = [], []
         for train_index, valid_index in splitter.split(df, groups=df["userID"]):
             train_dataset.append(df.loc[train_index])

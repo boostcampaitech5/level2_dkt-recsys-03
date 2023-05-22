@@ -321,7 +321,7 @@ class CrossValidationTrainer(Trainer):
     def oof(self) -> None:
         test = self.test_dataset
         probs = []
-        for i in range(5):
+        for i in range(self.config.k):
             if self.config.model.name == "LGBM":
                 load_path = self.get_model_txt_path(fold=str(i))
                 model = lgb.Booster(model_file=load_path)
