@@ -1,6 +1,7 @@
 import os
 import wandb
 import torch
+import math
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -9,7 +10,7 @@ from omegaconf import DictConfig
 from sklearn.model_selection import KFold
 
 from .dataloader import DKTDataModule, DKTDataKFoldModule
-from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS
+from .models import LSTM, LSTMATTN, GRUATTN, BERT, LQTR, SAINTPLUS, GPT2
 from .utils import get_logger, logging_conf
 
 
@@ -48,6 +49,9 @@ class Trainer:
         elif self.config.model.model_name == "SAINT_PLUS":
             wandb.save(f"./configs/model/SAINT_PLUS.yaml")
             return SAINTPLUS(self.config)
+        elif self.config.model.model_name == "GPT2":
+            wandb.save(f"./configs/model/GPT2.yaml")
+            return GPT2(self.config)
         else:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
@@ -109,6 +113,8 @@ class KfoldTrainer(Trainer):
         # K-fold Cross Validation
         for fold, (tra_idx, val_idx) in enumerate(kf.split(tr_dataset)):
             print(f"------------- Fold {fold}  :  train {len(tra_idx)}, val {len(val_idx)} -------------")
+            self.config.trainer.total_steps = math.ceil(len(tra_idx) / self.config.data.batch_size) * self.config.trainer.epoch
+            self.config.trainer.warmup_steps = self.config.trainer.total_steps // 10
 
             # create model for cv
             self.fold_model = self.load_model()

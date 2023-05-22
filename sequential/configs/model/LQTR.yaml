@@ -7,4 +7,3 @@ n_questions: 9455
 n_tags: 913
 n_heads: 4
 drop_out: 0.0
-POS: False

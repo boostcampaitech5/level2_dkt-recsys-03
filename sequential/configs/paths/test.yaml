@@ -1,0 +1,13 @@
+# path to data directory
+data_path: ../dummy/data
+# path to asset directory
+asset_path: asset/
+# path to output directory
+output_path: outputs/
+
+# name of train file
+train_file: train_data.csv
+# name of test file
+test_file: test_data.csv
+# name of sample file
+sample_file: sample_submission.csv
