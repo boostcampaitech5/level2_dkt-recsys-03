@@ -35,6 +35,7 @@ def __main(config: omegaconf.DictConfig = None) -> None:
         print("Skip data processing, just load data files")
         datamodule.shortcut()
     else:
+        print("Load data files, and process data")
         datamodule.prepare_data()
         datamodule.setup()
     wandb.run.summary["data_version"] = config.data_version
