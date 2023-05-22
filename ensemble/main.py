@@ -4,10 +4,12 @@ import numpy as np
 from omegaconf import DictConfig
 
 from ensemble.stacking import Stacking
+from ensemble.utils import set_seeds
 
 
 def __main(config: DictConfig = None) -> None:
     # set seed
+    set_seeds(config.seed)
 
     # load ensemble startegy model
     model = Stacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size)
