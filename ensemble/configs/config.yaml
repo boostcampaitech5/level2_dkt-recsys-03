@@ -1,0 +1,14 @@
+# seed number
+seed: 42
+
+# file path for ensemble
+ensemble_path: _candidates/
+
+# save path of final predict 
+output_path: _finals/
+
+ensemble_list: [
+  work-18_081211_SAINT_PLUS5final_submit.csv,
+  work-21_011145_BERT5final_submit.csv,
+  work-21_071135_GPT25final_submit.csv
+]
