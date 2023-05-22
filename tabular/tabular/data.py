@@ -23,6 +23,7 @@ class TabularDataModule:
         self.train_dataset: Optional[TabularDataset] = None
         self.valid_dataset: Optional[TabularDataset] = None
         self.test_dataset: Optional[TabularDataset] = None
+        self.ens_dataset: Optional[TabularDataset] = None
 
     def prepare_data(self):
         """
@@ -74,6 +75,7 @@ class TabularDataModule:
 
         self.test_data = self.feature_engineering(self.test_data)
         self.test_dataset = TabularDataset(self.config, self.test_data, is_test=True)
+        self.ens_dataset = TabularDataset(self.config, self.test_data, is_ens=True)
         # update data version
         if self.latest_version == False:
             print("Update data version...")
@@ -207,6 +209,7 @@ class TabularDataModule:
 
         self.test_data = self.load_data_file(self.data_dir + "test_data.csv", is_test=True)
         self.test_dataset = TabularDataset(self.config, self.test_data, is_test=True)
+        self.ens_dataset = TabularDataset(self.config, self.test_data, is_ens=True)
 
 
 class TabularDataSplitter:
@@ -237,9 +240,11 @@ class TabularDataSplitter:
 
 
 class TabularDataset:
-    def __init__(self, config: DictConfig, df: pd.DataFrame, is_test=False):
+    def __init__(self, config: DictConfig, df: pd.DataFrame, is_test=False, is_ens=False):
         if is_test == True:
-            df = df[df["userID"] != df["userID"].shift(-1)]
+            df = df.groupby("userID").nth(-1)
+        elif is_ens:
+            df = df.groupby("userID").nth(-2)
 
         self.user_id = df["userID"]
         self.X = df[OmegaConf.to_container(config.features)["features"]]
