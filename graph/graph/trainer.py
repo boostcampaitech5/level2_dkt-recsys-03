@@ -13,8 +13,9 @@ from pytorch_lightning.loggers import WandbLogger
 
 class Trainer:
     def __init__(self, dm: GraphDataModule, config: DictConfig):
-        self.dm = dm
         self.config = config
+        self.sub_dm = GraphDataModule(config=self.config)
+        self.val_dm = GraphDataModule(config=self.config, mode="val")
         self.model_name = self.config.model.model_name
 
         if self.model_name == "LightGCN":
@@ -34,27 +35,37 @@ class Trainer:
             logger=wandb_logger,
             callbacks=[early_stopping, checkpoint],
         )
-        trainer.fit(self.model, datamodule=self.dm)
+        trainer.fit(self.model, datamodule=self.sub_dm)
 
         # save model to wandb
-        # https://velog.io/@khs0415p/pytorch-lightning
         wandb.save(checkpoint.best_model_path)
 
         if self.model_name == "LightGCN":
             final_model = LightGCNNet.load_from_checkpoint(checkpoint.best_model_path, config=self.config)
             final_model.eval()
             final_model.freeze()
-        predictions = trainer.predict(final_model, self.dm)
+        sub_predictions = trainer.predict(final_model, self.sub_dm)[0]
+        val_predictions = trainer.predict(final_model, self.val_dm)[0]
+
         submission = pd.read_csv(self.config.paths.data_path + "sample_submission.csv")
+        validation = pd.read_csv(self.config.paths.data_path + "valid_data.csv")
 
         # get predicted values from the list
-        submission["prediction"] = predictions[0]
+        submission["prediction"] = sub_predictions
+        validation["prediction"] = val_predictions
 
         sub_file_name = now.strftime("%m%d_%H%M%S_") + self.config.model.model_name + "_submit.csv"
+        val_file_name = now.strftime("%m%d_%H%M%S_") + self.config.model.model_name + "_valid.csv"
 
-        write_path = os.path.join(self.config.paths.output_path, sub_file_name)
+        sub_write_path = os.path.join(self.config.paths.output_path, sub_file_name)
+        val_write_path = os.path.join(self.config.paths.output_path, val_file_name)
         os.makedirs(name=self.config.paths.output_path, exist_ok=True)
 
-        submission.to_csv(write_path, index=False)
-        print(f"Successfully saved submission as {write_path}")
-        wandb.save(write_path)
+        submission.to_csv(sub_write_path, index=False)
+        validation.to_csv(val_write_path, index=False)
+
+        print(f"Successfully saved submission as {sub_write_path}")
+        print(f"Successfully saved submission as {val_write_path}")
+
+        wandb.save(sub_write_path)
+        wandb.save(val_write_path)
