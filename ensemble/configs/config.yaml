@@ -1,0 +1,16 @@
+# seed number
+seed: 42
+
+# train test split size
+test_size: 0.5
+
+# file path for ensemble
+ensemble_path: _candidates/
+
+# save path of final predict 
+output_path: _finals/
+
+ensemble_list: [
+  dummy1,
+  dummy2
+]

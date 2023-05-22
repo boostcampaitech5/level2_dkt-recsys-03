@@ -47,7 +47,8 @@ key
 /sequential/outputs
 /sequential/output
 /sequential/wandb
-
+/ensemble/output
+/ensemble/outputs
 
 #vscode
 /.vscode
