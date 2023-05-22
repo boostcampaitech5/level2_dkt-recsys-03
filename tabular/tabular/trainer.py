@@ -117,7 +117,7 @@ class Trainer:
             cat_list = [col for col in train.X.columns.tolist() if train.X[col].dtype == "category"]
             model = CBclass(
                 params=OmegaConf.to_container(self.config.model.params),
-                task_type="GPU",
+                task_type="CPU",
                 cat_features=cat_list,
                 random_seed=self.config.seed,
                 bootstrap_type="Bayesian",
@@ -264,7 +264,7 @@ class CrossValidationTrainer(Trainer):
 
                 model = CBclass(
                     **params,
-                    task_type="GPU",
+                    task_type="CPU",
                     cat_features=cat_list,
                     random_seed=self.config.seed,
                     bootstrap_type="Bayesian",
