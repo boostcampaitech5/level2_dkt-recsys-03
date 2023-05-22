@@ -1,6 +1,9 @@
 # seed number
 seed: 42
 
+# train test split size
+test_size: 0.5
+
 # file path for ensemble
 ensemble_path: _candidates/
 
@@ -8,7 +11,6 @@ ensemble_path: _candidates/
 output_path: _finals/
 
 ensemble_list: [
-  work-18_081211_SAINT_PLUS5final_submit.csv,
-  work-21_011145_BERT5final_submit.csv,
-  work-21_071135_GPT25final_submit.csv
+  dummy1,
+  dummy2
 ]

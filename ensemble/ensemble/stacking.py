@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
 
 from .utils import rmse
 
@@ -10,34 +12,51 @@ class Stacking:
         self.filenames = filenames
         self.filepath = filepath
 
-    def get_output_frame(self) -> pd.DataFrame:
-        output_frame = pd.read_csv(os.path.join(self.filepath, self.filenames[0]))
-        output_frame["prediction"] = output_frame["prediction"].apply(lambda x: 0)
-        return output_frame
+        self.model = LinearRegression()  # stacking model
 
-    def load_train_data(self):
-        """
-        각 모델의 valid 데이터에 대한 예측 데이터를 불러와 저장합니다.
-        """
+        self.load_valid_data()
+        self.load_submit_data()
+
+    def load_valid_data(self):
         valid_path = [self.filepath + filename + "_valid.csv" for filename in self.filenames]
-        self.valid_labels = pd.read_csv(valid_path[0])["answer"]
-        self.valid_pred_list = []
 
+        self.valid_labels = pd.read_csv(valid_path[0])["answer"].to_list()
+        self.valid_pred_list = []
         for path in valid_path:
             self.valid_pred_list.append(pd.read_csv(path)["prediction"].to_list())
 
-    def train(self):
-        # prepare_train_data(self):
-        pass
+    def train(self, seed, test_size=0.5):
+        X = np.transpose(self.valid_pred_list)
+        y = self.valid_labels
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=seed)
+
+        self.model(X_train, y_train)  # training model
+
+        test_pred = self.model.predict(X_test)  # testing model
+        loss = rmse(test_pred, y_test)
+
+        print(f"Weight: {self.get_weights()}")
+        print(f"Bias: {self.get_bias()}")
+        print(f"Train RMSE: {loss}")
 
     def get_weights(self):
-        pass
+        return self.model.coef_
 
     def get_bias(self):
-        pass
+        return self.model.intercept_
 
-    def load_test_data(self):
-        pass
+    def load_submit_data(self):
+        submit_path = [self.filepath + filename + "_submit.csv" for filename in self.filenames]
+
+        self.submit_frame = pd.read_csv(submit_path[0])
+        self.submit_frame["prediction"] = self.submit_frame["prediction"].apply(lambda x: 0)
+
+        self.submit_pred_list = []
+        for path in submit_path:
+            self.submit_pred_list.append(pd.read_csv(path)["prediction"].to_list())
 
     def infer(self):
-        pass
+        X = np.transpose(self.submit_pred_list)
+        pred = self.model.predict(X)
+        return pred
