@@ -216,3 +216,15 @@ class UserRecency5(FeatureGenerator):
         X_ = X.copy()
         recency = X_.groupby("userID")["answerCode"].shift(5)
         return recency.fillna(0).values.reshape(-1, 1)
+
+
+class UserSolveCnt(FeatureGenerator):
+    """
+    유저별 총 문제풀이 수
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        agg = pd.DataFrame(X_["userID"].value_counts()).reset_index(drop=False)
+        cnt = pd.merge(X_, agg, on="userID", how="left")["count"]
+        return cnt.values.reshape(-1, 1)
