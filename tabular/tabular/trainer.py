@@ -83,7 +83,11 @@ class Trainer:
 
     def save_result_csv(self, result: pd.DataFrame, fold="", subset: str = "valid") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
-        filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
+        if fold:
+            filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
+        else:
+            filename = f"{self.config.timestamp}_{subset}.csv"
+
         save_path = os.path.join(directory, filename)
 
         os.makedirs(directory, exist_ok=True)
@@ -178,24 +182,34 @@ class Trainer:
 
     def inference(self) -> None:
         test = self.datamodule.test_dataset
+        ens = self.datamodule.ens_dataset
 
         if self.config.model.name == "LGBM":
             load_path = self.get_model_txt_path()
             model = lgb.Booster(model_file=load_path)
             test_prob = model.predict(test.X)
+            ens_prob = model.predict(ens.X)
         elif self.config.model.name == "Catboost":
             load_path = self.get_model_cbm_path()
             model = CBclass.load_model(model_file=load_path, format="cbm")
             test_prob = model.predict_proba(test.X)[:, 1]
+            ens_prob = model.predict_proba(ens.X)[:, 1]
+
         elif self.config.model.name == "XGboost":
             load_path = self.get_model_xgb_path()
             model = XGBClassifier.load_model(model_file=load_path)
             test_prob = model.predict_proba(test.X)[:, 1]
+            ens_prob = model.predict_proba(ens.X)[:, 1]
 
         if self.config.is_submit == True:
-            submission = self.get_sample_submission_csv()
-            submission["prediction"] = test_prob
-            self.save_result_csv(submission, subset="submission")
+            test_submission = self.get_sample_submission_csv()
+            test_submission["prediction"] = test_prob
+            self.save_result_csv(test_submission, subset="submission")
+
+            ens_submission = self.get_sample_submission_csv()
+            ens_submission["prediction"] = ens_prob
+            ens_submission["answer"] = ens.y.reset_index(drop=True)
+            self.save_result_csv(ens_submission, subset="valid")
 
         else:
             test_auc, test_acc = get_metric(test.y, test_prob)
@@ -224,6 +238,7 @@ class CrossValidationTrainer(Trainer):
         self.train_dataset: List[TabularDataset] = datamodule.train_dataset
         self.valid_datset: List[TabularDataset] = datamodule.valid_dataset
         self.test_dataset: TabularDataset = datamodule.test_dataset
+        self.ens_dataset: TabularDataset = datamodule.ens_dataset
 
     def cv(self) -> None:
         cv_score = 0
@@ -253,6 +268,7 @@ class CrossValidationTrainer(Trainer):
                     cat_features=cat_list,
                     random_seed=self.config.seed,
                     bootstrap_type="MVS",
+                    verbose=100,
                 )
 
                 model = model.fit(
@@ -320,31 +336,46 @@ class CrossValidationTrainer(Trainer):
 
     def oof(self) -> None:
         test = self.test_dataset
-        probs = []
+        ens = self.ens_dataset
+        test_probs = []
+        ens_probs = []
+
         for i in range(self.config.k):
             if self.config.model.name == "LGBM":
                 load_path = self.get_model_txt_path(fold=str(i))
                 model = lgb.Booster(model_file=load_path)
                 test_prob = model.predict(test.X)
+                ens_prob = model.predict(ens.X)
+
             elif self.config.model.name == "Catboost":
                 load_path = self.get_model_cbm_path(fold=str(i))
                 model = CBclass()
                 model.load_model(fname=load_path, format="cbm")
                 test_prob = model.predict_proba(test.X)[:, 1]
+                ens_prob = model.predict_proba(ens.X)[:, 1]
+
             elif self.config.model.name == "XGboost":
                 load_path = self.get_model_xgb_path(fold=str(i))
                 model = XGBClassifier()
                 model.load_model(fname=load_path)
                 test_prob = model.predict_proba(test.X)[:, 1]
+                ens_prob = model.predict_proba(ens.X)[:, 1]
 
-            probs.append(test_prob)
+            test_probs.append(test_prob)
+            ens_probs.append(ens_prob)
 
-        test_prob, test_pred = self.soft_voting(np.array(probs))
+        test_prob, test_pred = self.soft_voting(np.array(test_probs))
+        ens_prob, _ = self.soft_voting(np.array(ens_probs))
 
         if self.config.is_submit == True:
-            submission = self.get_sample_submission_csv()
-            submission["prediction"] = test_prob
-            self.save_result_csv(submission, subset="submission")
+            test_submission = self.get_sample_submission_csv()
+            test_submission["prediction"] = test_prob
+            self.save_result_csv(test_submission, subset="submission")
+
+            ens_submission = self.get_sample_submission_csv()
+            ens_submission["prediction"] = ens_prob
+            ens_submission["answer"] = ens.y.values
+            self.save_result_csv(ens_submission, subset="valid")
 
         else:
             test_auc, test_acc = get_metric(test.y, test_prob)

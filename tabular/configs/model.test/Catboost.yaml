@@ -2,11 +2,7 @@ name: Catboost
 
 params:
   learning_rate: 0.02
-  depth: 5
   l2_leaf_reg: 3
   iterations: 1
   random_strength: 3
-  early_stopping_rounds: 30
-  bagging_temperature: 0.5
-  border_count: 32 
-  
+  early_stopping_rounds: 20  
