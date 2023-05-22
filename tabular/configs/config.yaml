@@ -6,13 +6,15 @@ defaults:
   - paths: default.yaml
   - wandb: default.yaml
 
-data_version: 15154140
+data_version: 
 
 skip_data_processing: False
 
-is_submit: False
+is_submit: True
 
 cv_strategy: kfold
+
+k: 5
 
 seed: 42
 

@@ -54,9 +54,7 @@ class Trainer:
         path = os.path.join(directory, filename)
         return pd.read_csv(path)
 
-    def make_result_df(
-        self, user_ids: List, prob: np.ndarray, true: pd.Series
-    ) -> pd.DataFrame:
+    def make_result_df(self, user_ids: List, prob: np.ndarray, true: pd.Series) -> pd.DataFrame:
         result = pd.DataFrame(
             {
                 "userID": user_ids,
@@ -67,9 +65,7 @@ class Trainer:
         )
         return result
 
-    def save_result_csv(
-        self, result: pd.DataFrame, fold="", subset: str = "valid"
-    ) -> None:
+    def save_result_csv(self, result: pd.DataFrame, fold="", subset: str = "valid") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
         save_path = os.path.join(directory, filename)
@@ -102,20 +98,14 @@ class Trainer:
             model.save_model(save_path, num_iteration=model.best_iteration)
             wandb.save(save_path)
 
-            train_prob: np.ndarray = model.predict(
-                train.X, num_iteration=model.best_iteration
-            )
-            valid_prob: np.ndarray = model.predict(
-                valid.X, num_iteration=model.best_iteration
-            )
+            train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+            valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
 
             wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
 
         train_auc, train_acc = get_metric(train.y, train_prob)
         valid_auc, valid_acc = get_metric(valid.y, valid_prob)
-        print(
-            f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}"
-        )
+        print(f"train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
         result = self.make_result_df(valid.user_id, valid_prob, valid.y)
         self.save_result_csv(result, subset="valid")
@@ -185,22 +175,16 @@ class CrossValidationTrainer(Trainer):
                 model.save_model(save_path, num_iteration=model.best_iteration)
                 wandb.save(save_path)
 
-                train_prob: np.ndarray = model.predict(
-                    train.X, num_iteration=model.best_iteration
-                )
-                valid_prob: np.ndarray = model.predict(
-                    valid.X, num_iteration=model.best_iteration
-                )
+                train_prob: np.ndarray = model.predict(train.X, num_iteration=model.best_iteration)
+                valid_prob: np.ndarray = model.predict(valid.X, num_iteration=model.best_iteration)
 
                 train_auc, train_acc = get_metric(train.y, train_prob)
                 valid_auc, valid_acc = get_metric(valid.y, valid_prob)
-                print(
-                    f"fold: {i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}"
-                )
+                print(f"fold: {i} train auc:{train_auc} valid auc:{valid_auc} train acc:{train_acc} valid acc:{valid_acc}")
 
-                cv_score += valid_auc / 5
+                cv_score += valid_auc / self.config.k
 
-            if i == 4:
+            if i == self.config.k - 1:
                 wandb.lightgbm.log_summary(model, save_model_checkpoint=True)
 
             result = self.make_result_df(valid.user_id, valid_prob, valid.y)
@@ -212,7 +196,7 @@ class CrossValidationTrainer(Trainer):
     def oof(self) -> None:
         test = self.test_dataset
         probs = []
-        for i in range(5):
+        for i in range(self.config.k):
             if self.config.model.name == "LGBM":
                 load_path = self.get_model_txt_path(fold=str(i))
                 model = lgb.Booster(model_file=load_path)
