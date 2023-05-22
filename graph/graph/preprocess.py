@@ -1,18 +1,24 @@
 import os
 import torch
+import numpy as np
 import pandas as pd
 from typing import Tuple, Dict
 from omegaconf import DictConfig
 
 
-def load_data(data_dir:str) -> pd.DataFrame: 
+def load_data(data_dir: str, mode: str = None) -> pd.DataFrame:
     path1 = os.path.join(data_dir, "train_data.csv")
     path2 = os.path.join(data_dir, "test_data.csv")
-    data1 = pd.read_csv(path1)
-    data2 = pd.read_csv(path2)
-    data = pd.concat([data1, data2])
+    train = pd.read_csv(path1)
+    test = pd.read_csv(path2)
+
+    if mode == "val":
+        test = get_valid(test)
+
+    data = pd.concat([train, test])
     data.drop_duplicates(subset=["userID", "assessmentItemID"], keep="last", inplace=True)
     return data
+
 
 def indexing_data(data: pd.DataFrame) -> Dict[str, int]:
     userid, itemid = (
@@ -25,20 +31,28 @@ def indexing_data(data: pd.DataFrame) -> Dict[str, int]:
     id2index = dict(userid2index, **itemid2index)
     return id2index
 
-def process_data(data: pd.DataFrame, id2index: dict) -> dict:
+
+def process_data(data: pd.DataFrame, id2index: dict, config: DictConfig) -> dict:
     edge, label = [], []
 
     for user, item, acode in zip(data.userID, data.assessmentItemID, data.answerCode):
         uid, iid = id2index[user], id2index[item]
         edge.append([uid, iid])
         label.append(acode)
-        
     edge = torch.LongTensor(edge).T
     label = torch.LongTensor(label)
-    return dict(edge=edge,
-                label=label)
+    return dict(edge=edge, label=label)
+
 
 def separate_data(data: pd.DataFrame) -> Tuple[pd.DataFrame]:
     train_data = data[data.answerCode >= 0]
     test_data = data[data.answerCode < 0]
     return train_data, test_data
+
+
+def get_valid(data: pd.DataFrame) -> pd.DataFrame:
+    data["idx"] = np.arange(0, data.shape[0])
+    data = data[data.answerCode >= 0]
+    id_list = data.groupby("userID").last().idx
+    data.loc[id_list, "answerCode"] = -1
+    return data
