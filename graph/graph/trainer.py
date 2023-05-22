@@ -48,7 +48,7 @@ class Trainer:
         val_predictions = trainer.predict(final_model, self.val_dm)[0]
 
         submission = pd.read_csv(self.config.paths.data_path + "sample_submission.csv")
-        validation = pd.read_csv(self.config.paths.data_path + "validation.csv")
+        validation = pd.read_csv(self.config.paths.data_path + "valid_data.csv")
 
         # get predicted values from the list
         submission["prediction"] = sub_predictions
