@@ -1,4 +1,5 @@
 import torch
+import wandb
 import numpy as np
 import lightning as L
 from omegaconf import DictConfig
@@ -63,6 +64,7 @@ class GraphDataModule(L.LightningDataModule):
     def train_dataloader(self):
         trainset = GraphDataset(self.train_data)
         train_loader = DataLoader(trainset, num_workers=self.config.data.num_workers, batch_size=self.config.data.train_batch_size)
+        wandb.log({"train_batch": self.config.data.train_batch_size})
         return train_loader
 
     def val_dataloader(self):
