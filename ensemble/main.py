@@ -34,9 +34,22 @@ def __main(config: DictConfig = None) -> None:
 
     wandb.log({"cv_strategy": config.cv_strategy})
     if config.cv_strategy == "holdout":
-        model = Stacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size)
+        model = Stacking(
+            filenames=config.ensemble_list,
+            filepath=config.ensemble_path,
+            seed=config.seed,
+            test_size=config.test_size,
+            intercept_opt=config.intercept_opt,
+        )
     else:  # kfold
-        model = OofStacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size, k=config.k)
+        model = OofStacking(
+            filenames=config.ensemble_list,
+            filepath=config.ensemble_path,
+            seed=config.seed,
+            test_size=config.test_size,
+            k=config.k,
+            intercept_opt=config.intercept_opt,
+        )
 
     # train & inference
     model.fit()
@@ -50,7 +63,11 @@ def __main(config: DictConfig = None) -> None:
     submit = model.submit_frame.copy()
     submit["prediction"] = submit_pred
 
-    csv_path = f"{config.output_path}{model.set_filename()}.csv"
+    if config.intercept_opt:
+        csv_path = f"{config.output_path}{model.set_filename()}.csv"
+    else:
+        csv_path = f"{config.output_path}_nointer_{model.set_filename()}.csv"
+
     submit.to_csv(csv_path, index=False)
     wandb.save(csv_path)
 

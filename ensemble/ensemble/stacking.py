@@ -2,13 +2,13 @@ import wandb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split, cross_validate, cross_val_predict, cross_val_score
+from sklearn.model_selection import train_test_split, cross_validate
 
 from .utils import get_metric
 
 
 class StackingBase:
-    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float):
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float, intercept_opt: bool):
         self.filenames = filenames
         self.filepath = filepath
         self.seed = seed
@@ -17,7 +17,10 @@ class StackingBase:
         self.load_valid_data()
         self.load_submit_data()
 
-        self.model = LinearRegression()  # stacking model
+        if intercept_opt:
+            self.model = LinearRegression()  # stacking model
+        else:
+            self.model = LinearRegression(fit_intercept=intercept_opt)
 
     def load_valid_data(self):
         valid_path = [self.filepath + filename + "_valid.csv" for filename in self.filenames]
@@ -39,8 +42,8 @@ class StackingBase:
 
 
 class Stacking(StackingBase):
-    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float):
-        super().__init__(filenames, filepath, seed, test_size)
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float, intercept_opt: bool):
+        super().__init__(filenames, filepath, seed, test_size, intercept_opt)
 
     def fit(self, verbose=True):
         X = np.transpose(self.valid_pred_list)
@@ -83,8 +86,8 @@ class Stacking(StackingBase):
 
 
 class OofStacking(StackingBase):
-    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float, k: int):
-        super().__init__(filenames, filepath, seed, test_size)
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float, k: int, intercept_opt: bool):
+        super().__init__(filenames, filepath, seed, test_size, intercept_opt)
         self.k = k
 
     def fit(self, verbose=True):
