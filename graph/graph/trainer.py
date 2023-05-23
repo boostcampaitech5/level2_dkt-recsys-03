@@ -3,7 +3,7 @@ import wandb
 import pandas as pd
 import lightning as L
 from datetime import datetime
-from .model import LightGCNNet
+from .models.LightGCN import LightGCNNet
 from omegaconf import DictConfig
 from .dataloader import GraphDataModule
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -21,6 +21,7 @@ class Trainer:
         if self.model_name == "LightGCN":
             self.model = LightGCNNet(self.config)
             wandb.save(f"./configs/model/{self.model_name}.yaml")
+            wandb.save(f"./configs/data/default.yaml")
 
     def train(self):
         now = datetime.now()

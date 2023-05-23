@@ -7,11 +7,18 @@ metric:
   name: val_acc
 parameters:
   model.emb_dim: 
-    values: [64, 128, 256]
+    values: [128]
   model.n_layers:
-    values: [2,3,4]
+    values: [2]
   trainer.epoch:
+    values: [1000]
+  trainer.lr:
+    values: [0.001]
+  trainer.patience:
     values: [10]
+  data.train_batch_size:
+    values: [512, 1024, 2048, 4096]
+  
 
 command:
   - ${env}
