@@ -49,6 +49,7 @@ key
 /sequential/wandb
 /ensemble/output
 /ensemble/outputs
+/ensemble/wandb
 
 #vscode
 /.vscode

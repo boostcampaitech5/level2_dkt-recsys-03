@@ -1,3 +1,4 @@
+import wandb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -40,6 +41,9 @@ class Stacking:
         print(f"Weight: {self.get_weights()}")
         print(f"Bias: {self.get_bias()}")
         print(f"Train RMSE: {loss}")
+
+        wandb.log({"weights": self.get_weights()})
+        wandb.log({"RMSE": loss})
 
     def get_weights(self):
         return self.model.coef_
