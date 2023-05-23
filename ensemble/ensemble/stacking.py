@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split, cross_validate, cross_val_predict, cross_val_score
 
-from .utils import rmse
+from .utils import get_metric
 
 
 class StackingBase:
@@ -55,14 +55,15 @@ class Stacking(StackingBase):
             print(f"Bias: {self.get_bias()}")
 
         y_pred = self.model.predict(X_valid)  # validation model
-        loss = rmse(y_pred, y_valid)
+        val_auc, val_acc = get_metric(targets=y_valid, preds=y_pred)
 
         print("========= Holdout Valid =========")
         if verbose:
-            print(f"RMSE: {loss}")
+            print(f">>> AUC: {val_auc}, ACC: {val_acc}")
 
         wandb.log({"weights": self.get_weights()})
-        wandb.log({"RMSE": loss})
+        wandb.log({"val_AUC": val_auc})
+        wandb.log({"val_ACC": val_acc})
 
     def get_weights(self):
         return self.model.coef_
@@ -92,19 +93,20 @@ class OofStacking(StackingBase):
 
         self.cv = cross_validate(self.model, X, y, cv=self.k, return_estimator=True)
 
-        rmses = []
+        aucs = []
         for f_idx, model in enumerate(self.cv["estimator"]):
             pred = model.predict(X)
 
-            loss = rmse(pred, y)
-            print(f">>> {f_idx} fold Score: {loss}")
-            rmses.append(rmse(pred, y))
+            val_auc, val_acc = get_metric(targets=y, preds=pred)
+            print(f">>> [{f_idx} fold Score] AUC: {val_auc}, ACC: {val_acc}")
+            aucs.append(val_auc)
+
+        cv_score = np.array(aucs).mean()
+        wandb.log({"cv_score": cv_score})
 
         if verbose:
             print("========= Cross Validation Valid =========")
-            print(f"valid RMSE mean: {np.array(rmses).mean()}")
-
-        return rmses
+            print(f"CV score: {cv_score}")
 
     def infer(self):
         X_test = np.transpose(self.submit_pred_list)

@@ -35,7 +35,7 @@ def __main(config: DictConfig = None) -> None:
     wandb.log({"cv_strategy": config.cv_strategy})
     if config.cv_strategy == "holdout":
         model = Stacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size)
-    else:  # k-fold
+    else:  # kfold
         model = OofStacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size, k=config.k)
 
     # train & inference
