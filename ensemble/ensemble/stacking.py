@@ -2,22 +2,22 @@ import wandb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_validate, cross_val_predict, cross_val_score
 
 from .utils import rmse
 
 
-class Stacking:
+class StackingBase:
     def __init__(self, filenames: list, filepath: str, seed: int, test_size: float):
         self.filenames = filenames
         self.filepath = filepath
         self.seed = seed
         self.test_size = test_size
 
-        self.model = LinearRegression()  # stacking model
-
         self.load_valid_data()
         self.load_submit_data()
+
+        self.model = LinearRegression()  # stacking model
 
     def load_valid_data(self):
         valid_path = [self.filepath + filename + "_valid.csv" for filename in self.filenames]
@@ -26,30 +26,6 @@ class Stacking:
         self.valid_pred_list = []
         for path in valid_path:
             self.valid_pred_list.append(pd.read_csv(path)["prediction"].to_list())
-
-    def train(self):
-        X = np.transpose(self.valid_pred_list)
-        y = self.valid_labels
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.test_size, random_state=self.seed)
-
-        self.model.fit(X_train, y_train)  # training model
-
-        test_pred = self.model.predict(X_test)  # testing model
-        loss = rmse(test_pred, y_test)
-
-        print(f"Weight: {self.get_weights()}")
-        print(f"Bias: {self.get_bias()}")
-        print(f"Train RMSE: {loss}")
-
-        wandb.log({"weights": self.get_weights()})
-        wandb.log({"RMSE": loss})
-
-    def get_weights(self):
-        return self.model.coef_
-
-    def get_bias(self):
-        return self.model.intercept_
 
     def load_submit_data(self):
         submit_path = [self.filepath + filename + "_submit.csv" for filename in self.filenames]
@@ -61,7 +37,85 @@ class Stacking:
         for path in submit_path:
             self.submit_pred_list.append(pd.read_csv(path)["prediction"].to_list())
 
+
+class Stacking(StackingBase):
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float):
+        super().__init__(filenames, filepath, seed, test_size)
+
+    def fit(self, verbose=True):
+        X = np.transpose(self.valid_pred_list)
+        y = np.array(self.valid_labels)
+
+        X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=self.test_size, random_state=self.seed)
+
+        self.model.fit(X_train, y_train)  # train model
+
+        if verbose:
+            print(f"Weight: {self.get_weights()}")
+            print(f"Bias: {self.get_bias()}")
+
+        y_pred = self.model.predict(X_valid)  # validation model
+        loss = rmse(y_pred, y_valid)
+
+        print("========= Holdout Valid =========")
+        if verbose:
+            print(f"RMSE: {loss}")
+
+        wandb.log({"weights": self.get_weights()})
+        wandb.log({"RMSE": loss})
+
+    def get_weights(self):
+        return self.model.coef_
+
+    def get_bias(self):
+        return self.model.intercept_
+
     def infer(self):
         X = np.transpose(self.submit_pred_list)
         pred = self.model.predict(X)
         return pred
+
+    def set_filename(self):
+        weights_info = "-".join([str(w)[:4] for w in self.get_weights()])
+        file_title = "-".join(self.filenames)
+        return f"stack-{weights_info}-{file_title}.csv"
+
+
+class OofStacking(StackingBase):
+    def __init__(self, filenames: list, filepath: str, seed: int, test_size: float, k: int):
+        super().__init__(filenames, filepath, seed, test_size)
+        self.k = k
+
+    def fit(self, verbose=True):
+        X = np.transpose(self.valid_pred_list)
+        y = np.array(self.valid_labels)
+
+        self.cv = cross_validate(self.model, X, y, cv=self.k, return_estimator=True)
+
+        rmses = []
+        for f_idx, model in enumerate(self.cv["estimator"]):
+            pred = model.predict(X)
+
+            loss = rmse(pred, y)
+            print(f">>> {f_idx} fold Score: {loss}")
+            rmses.append(rmse(pred, y))
+
+        if verbose:
+            print("========= Cross Validation Valid =========")
+            print(f"valid RMSE mean: {np.array(rmses).mean()}")
+
+        return rmses
+
+    def infer(self):
+        X_test = np.transpose(self.submit_pred_list)
+
+        preds = []
+        for model in self.cv["estimator"]:
+            preds.append(model.predict(X_test))
+        preds = np.array(preds)
+
+        return preds.mean(axis=0)
+
+    def set_filename(self):
+        filename = "-".join(self.filenames)
+        return f"oof-{filename}"
