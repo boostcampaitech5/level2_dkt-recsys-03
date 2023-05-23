@@ -16,6 +16,15 @@ ensemble_list: [
   dummy2
 ]
 
+# cv strategy (holdout/kfold)
+cv_strategy: kfold
+
+# k of kfold
+k: 5
+
+# fit_intercept option of Linear Regression model
+intercept_opt: True
+
 # wandb project title
 wandb_project: DKT_ensemble
 

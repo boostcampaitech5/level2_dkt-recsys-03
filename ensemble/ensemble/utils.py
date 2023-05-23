@@ -1,7 +1,8 @@
 import os
+from typing import Tuple
 import numpy as np
+from sklearn.metrics import accuracy_score, roc_auc_score
 from datetime import datetime
-from sklearn.metrics import mean_squared_error
 
 
 def set_seeds(seed: int = 42):
@@ -9,8 +10,10 @@ def set_seeds(seed: int = 42):
     np.random.seed(seed)
 
 
-def rmse(pred, test):
-    return mean_squared_error(pred, test) ** 0.5
+def get_metric(targets: np.ndarray, preds: np.ndarray) -> Tuple[float]:
+    auc = roc_auc_score(y_true=targets, y_score=preds)
+    acc = accuracy_score(y_true=targets, y_pred=np.where(preds >= 0.5, 1, 0))
+    return auc, acc
 
 
 def get_timestamp(date_format: str = "%d_%H%M%S") -> str:

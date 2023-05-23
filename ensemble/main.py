@@ -5,7 +5,7 @@ import dotenv
 import numpy as np
 from omegaconf import DictConfig
 
-from ensemble.stacking import Stacking
+from ensemble.stacking import Stacking, OofStacking
 from ensemble.utils import set_seeds, get_timestamp
 
 
@@ -31,27 +31,43 @@ def __main(config: DictConfig = None) -> None:
 
     # load ensemble startegy model
     print(f"Models: {config.ensemble_list}")
-    model = Stacking(filenames=config.ensemble_list, filepath=config.ensemble_path, seed=config.seed, test_size=config.test_size)
+
+    wandb.log({"cv_strategy": config.cv_strategy})
+    if config.cv_strategy == "holdout":
+        model = Stacking(
+            filenames=config.ensemble_list,
+            filepath=config.ensemble_path,
+            seed=config.seed,
+            test_size=config.test_size,
+            intercept_opt=config.intercept_opt,
+        )
+    else:  # kfold
+        model = OofStacking(
+            filenames=config.ensemble_list,
+            filepath=config.ensemble_path,
+            seed=config.seed,
+            test_size=config.test_size,
+            k=config.k,
+            intercept_opt=config.intercept_opt,
+        )
 
     # train & inference
-    model.train()
-
-    weights = model.get_weights()
-
-    result = model.infer()
+    model.fit()
+    submit_pred = model.infer()
 
     # make save dir
     if not os.path.exists(config.output_path):
         os.makedirs(config.output_path)
 
-    # save inference result
+    # save inference result (submit_pred)
     submit = model.submit_frame.copy()
-    submit["prediction"] = result
+    submit["prediction"] = submit_pred
 
-    weights_info = "".join([str(w)[:4] for w in weights])
-    file_title = "-".join(config.ensemble_list)
+    if config.intercept_opt:
+        csv_path = f"{config.output_path}{model.set_filename()}.csv"
+    else:
+        csv_path = f"{config.output_path}_nointer_{model.set_filename()}.csv"
 
-    csv_path = f"{config.output_path}{weights_info}-{file_title}.csv"
     submit.to_csv(csv_path, index=False)
     wandb.save(csv_path)
 
