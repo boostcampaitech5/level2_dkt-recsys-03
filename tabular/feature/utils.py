@@ -25,7 +25,7 @@ def get_feature_engineering_pipeline(generators: List[Tuple[str, FeatureGenerato
 def get_feature_dtype() -> Dict:
     dtype = {
         # original
-        "userID": "category",
+        "userID": "int",
         "testId": "category",
         "assessmentItemID": "category",
         "answerCode": "int",
@@ -47,6 +47,22 @@ def get_feature_dtype() -> Dict:
         "UserRecency4": "int",
         "UserRecency5": "int",
         "UserSolveCnt": "int",
+        "RollingTime": "float",
+        "UserInteraction1": "category",
+        "UserInteraction2": "category",
+        "UserInteraction3": "category",
+        "UserInteraction4": "category",
+        "UserInteraction5": "category",
+        "UserTag1Interaction1": "category",
+        "UserTag1Interaction2": "category",
+        "UserTag1Interaction3": "category",
+        "UserTag1Interaction4": "category",
+        "UserTag1Interaction5": "category",
+        "UserTag2Interaction1": "category",
+        "UserTag2Interaction2": "category",
+        "UserTag2Interaction3": "category",
+        "UserTag2Interaction4": "category",
+        "UserTag2Interaction5": "category",
     }
     return dtype
 
@@ -54,7 +70,7 @@ def get_feature_dtype() -> Dict:
 def get_feature_dtype_for_lgbm() -> Dict:
     dtype = {
         # original
-        "userID": "category",
+        "userID": "int",
         "testId": "category",
         "assessmentItemID": "category",
         "answerCode": "int",
@@ -74,6 +90,22 @@ def get_feature_dtype_for_lgbm() -> Dict:
         "UserRecency4": "int",
         "UserRecency5": "int",
         "UserSolveCnt": "int",
+        "RollingTime": "float",
+        "UserInteraction1": "category",
+        "UserInteraction2": "category",
+        "UserInteraction3": "category",
+        "UserInteraction4": "category",
+        "UserInteraction5": "category",
+        "UserTag1Interaction1": "category",
+        "UserTag1Interaction2": "category",
+        "UserTag1Interaction3": "category",
+        "UserTag1Interaction4": "category",
+        "UserTag1Interaction5": "category",
+        "UserTag2Interaction1": "category",
+        "UserTag2Interaction2": "category",
+        "UserTag2Interaction3": "category",
+        "UserTag2Interaction4": "category",
+        "UserTag2Interaction5": "category",
     }
     return dtype
 
@@ -96,8 +128,6 @@ def get_feature_generator(name: str):
         return G.UserLastTag1Correct()
     elif name == "UserLastTag2Correct":
         return G.UserLastTag2Correct()
-    elif name == "UserTestRollingTime":
-        return G.UserTestRollingTime()
     elif name == "ItemNumScaled":
         return G.ItemNumScaled()
     elif name == "Tag1Acc":
@@ -120,5 +150,37 @@ def get_feature_generator(name: str):
         return G.UserRecency5()
     elif name == "UserSolveCnt":
         return G.UserSolveCnt()
+    elif name == "RollingTime":
+        return G.RollingTime()
+    elif name == "UserInteraction1":
+        return G.UserInteraction1()
+    elif name == "UserInteraction2":
+        return G.UserInteraction2()
+    elif name == "UserInteraction3":
+        return G.UserInteraction3()
+    elif name == "UserInteraction4":
+        return G.UserInteraction4()
+    elif name == "UserInteraction5":
+        return G.UserInteraction5()
+    elif name == "UserTag1Interaction1":
+        return G.UserTag1Interaction1()
+    elif name == "UserTag1Interaction2":
+        return G.UserTag1Interaction2()
+    elif name == "UserTag1Interaction3":
+        return G.UserTag1Interaction3()
+    elif name == "UserTag1Interaction4":
+        return G.UserTag1Interaction4()
+    elif name == "UserTag1Interaction5":
+        return G.UserTag2Interaction5()
+    elif name == "UserTag2Interaction1":
+        return G.UserTag2Interaction1()
+    elif name == "UserTag2Interaction2":
+        return G.UserTag2Interaction2()
+    elif name == "UserTag2Interaction3":
+        return G.UserTag2Interaction3()
+    elif name == "UserTag2Interaction4":
+        return G.UserTag2Interaction4()
+    elif name == "UserTag2Interaction5":
+        return G.UserTag2Interaction5()
     else:
         raise NotImplementedError

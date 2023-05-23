@@ -84,16 +84,16 @@ class UserLastTag2Correct(FeatureGenerator):
         return shift.fillna(0).values.reshape(-1, 1)
 
 
-class UserTestRollingTime(FeatureGenerator):
+class RollingTime(FeatureGenerator):
     """
     유저별 현재 풀고 있는 시험지에 대한 풀이시간 이동평균(n_rolling=3)
     """
 
     def transform(self, X: pd.DataFrame) -> np.ndarray:
         X_ = X.copy()
-        X_["solvingtime"] = X_.groupby(["userID", "testId"])["Timestamp"].diff().dt.total_seconds()
+        X_["solvingtime"] = X_.groupby(["userID", "testId"])["Timestamp"].diff().dt.total_seconds().fillna(0)
         rollingtime = X_.groupby("userID")["solvingtime"].rolling(3).mean()
-        return rollingtime.fillna(0).values.reshape(-1, 1)
+        return rollingtime.values.reshape(-1, 1)
 
 
 class ItemNumScaled(FeatureGenerator):
@@ -228,3 +228,183 @@ class UserSolveCnt(FeatureGenerator):
         agg = pd.DataFrame(X_["userID"].value_counts()).reset_index(drop=False)
         cnt = pd.merge(X_, agg, on="userID", how="left")["count"]
         return cnt.values.reshape(-1, 1)
+
+
+class UserInteraction1(FeatureGenerator):
+    """
+    유저별 1시점 전 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["assessmentItemID"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(1).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserInteraction2(FeatureGenerator):
+    """
+    유저별 2시점 전 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["assessmentItemID"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(2).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserInteraction3(FeatureGenerator):
+    """
+    유저별 3시점 전 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["assessmentItemID"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(3).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserInteraction4(FeatureGenerator):
+    """
+    유저별 4시점 전 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["assessmentItemID"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(4).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserInteraction5(FeatureGenerator):
+    """
+    유저별 5시점 전 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["assessmentItemID"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(5).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag1Interaction1(FeatureGenerator):
+    """
+    유저별 1시점 전 KnowledgeTag 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["KnowledgeTag"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(1).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag1Interaction2(FeatureGenerator):
+    """
+    유저별 3시점 전 KnowledgeTag 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["KnowledgeTag"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(2).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag1Interaction3(FeatureGenerator):
+    """
+    유저별 1시점 전 KnowledgeTag 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["KnowledgeTag"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(3).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag1Interaction4(FeatureGenerator):
+    """
+    유저별 4시점 전 KnowledgeTag 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["KnowledgeTag"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(4).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag1Interaction5(FeatureGenerator):
+    """
+    유저별 5시점 전 KnowledgeTag 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["KnowledgeTag"] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(5).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag2Interaction1(FeatureGenerator):
+    """
+    유저별 1시점 전 testId[2] 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["testId"][2] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(1).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag2Interaction2(FeatureGenerator):
+    """
+    유저별 2시점 전 testId[2] 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["testId"][2] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(2).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag2Interaction3(FeatureGenerator):
+    """
+    유저별 3시점 전 testId[2] 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["testId"][2] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(3).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag2Interaction4(FeatureGenerator):
+    """
+    유저별 4시점 전 testId[2] 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["testId"][2] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(4).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
+
+
+class UserTag2Interaction5(FeatureGenerator):
+    """
+    유저별 5시점 전 testId[2] 인터렉션
+    """
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        X_ = X.copy()
+        X_["interaction"] = X_.apply(lambda x: x["testId"][2] + "|" + str(x["answerCode"]), axis=1)
+        interaction = X_.groupby("userID")["interaction"].shift(5).fillna("PAD")
+        return interaction.values.reshape(-1, 1)
