@@ -156,7 +156,9 @@ class TabularDataModule:
     def preprocessing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         전처리
+        - 이상치 제거
         """
+        df = df[df["userID"] != 481].reset_index(drop=True)
         return df
 
     def feature_engineering(self, df: pd.DataFrame) -> pd.DataFrame:
