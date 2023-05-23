@@ -21,10 +21,10 @@ class Trainer:
     def __init__(self, config: DictConfig):
         self.config = config
 
-    def load_data(self):
+    def load_data(self, mode: str = "submit"):
         print(f"----------------- Setup datamodule -----------------")
         logger.info("Preparing data ...")
-        return DKTDataModule(self.config)
+        return DKTDataModule(self.config, mode)
 
     def load_model(self):
         logger.info("Building Model ...")
@@ -55,6 +55,37 @@ class Trainer:
         else:
             raise Exception(f"Wrong model name is used : {self.config.model.model_name}")
 
+    def write_result_csv(self, pred: np.ndarray, mode: str, true=None, fold: int = None, oof: bool = False) -> None:
+        result_df = pd.DataFrame(pred).reset_index()
+        result_df.columns = ["id", "prediction"]
+
+        if mode == "valid":
+            result_df["answer"] = true
+
+        if oof == True:
+            if mode == "submit":
+                file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_submit.csv"
+            elif mode == "valid":
+                file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_valid.csv"
+        else:
+            if fold == None:
+                if mode == "submit":
+                    file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_submit.csv"
+                elif mode == "valid":
+                    file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_valid.csv"
+
+            else:
+                if mode == "submit":
+                    file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
+                elif mode == "valid":
+                    file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_valid.csv"
+
+        write_path = os.path.join(self.config.paths.output_path, file_name)
+        os.makedirs(name=self.config.paths.output_path, exist_ok=True)
+        result_df.to_csv(write_path, index=False)
+        print(f"Successfully saved submission as {write_path}")
+        wandb.save(write_path)
+
     def train(self):
         early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
         self.trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
@@ -66,23 +97,16 @@ class Trainer:
         self.trainer.fit(self.model, datamodule=self.dm)
 
     def predict(self):
+        self.sub_dm = self.load_data(mode="submit")
+        self.val_dm = self.load_data(mode="valid")
         logger.info("Making Prediction ...")
-        predictions = self.trainer.predict(self.model, datamodule=self.dm)
+        sub_predictions = self.trainer.predict(self.model, datamodule=self.sub_dm)
+        val_predictions = self.trainer.predict(self.model, datamodule=self.val_dm)
+        val_true = self.val_dm.test_answercode
 
         logger.info("Saving Submission ...")
-        predictions = np.concatenate(predictions)
-        submit_df = pd.DataFrame(predictions)
-        submit_df = submit_df.reset_index()
-        submit_df.columns = ["id", "prediction"]
-
-        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_submit.csv"
-
-        write_path = os.path.join(self.config.paths.output_path, file_name)
-        os.makedirs(name=self.config.paths.output_path, exist_ok=True)
-
-        submit_df.to_csv(write_path, index=False)
-        print(f"Successfully saved submission as {write_path}")
-        wandb.save(write_path)
+        self.write_result_csv(np.concatenate(sub_predictions), mode="submit")
+        self.write_result_csv(np.concatenate(val_predictions), mode="valid", true=val_true)
 
 
 class KfoldTrainer(Trainer):
@@ -90,7 +114,8 @@ class KfoldTrainer(Trainer):
         super().__init__(config)
         self.config = config
         self.cv_score = 0
-        self.result_csv_list = []
+        self.sub_result_csv_list = []
+        self.val_result_csv_list = []
 
     def cv(self):
         kf = KFold(
@@ -100,15 +125,19 @@ class KfoldTrainer(Trainer):
         )
 
         # load original data and groupby user and preprocessing
-        self.dm = self.load_data()
-        self.dm.prepare_data()
-        self.dm.setup()
+        self.sub_dm = self.load_data(mode="submit")
+        self.sub_dm.prepare_data()
+        self.sub_dm.setup()
+
+        self.val_dm = self.load_data(mode="valid")
+        self.val_dm.prepare_data()
+        self.val_dm.setup()
 
         # load train dataset
-        tr_dataset = self.dm.train_data
-        val_dastaset = self.dm.valid_data
+        tr_dataset = self.sub_dm.train_data
+        val_dastaset = self.sub_dm.valid_data
         tr_dataset = np.concatenate((tr_dataset, val_dastaset), axis=0)  # concat for k-fold cv
-        test_dataset = self.dm.test_data
+        test_dataset = self.sub_dm.test_data
 
         # K-fold Cross Validation
         for fold, (tra_idx, val_idx) in enumerate(kf.split(tr_dataset)):
@@ -122,7 +151,7 @@ class KfoldTrainer(Trainer):
             early_stop_callback = EarlyStopping(monitor="val_auc", patience=self.config.trainer.patience, verbose=True, mode="max")
             self.fold_trainer = pl.Trainer(max_epochs=self.config.trainer.epoch, callbacks=[early_stop_callback])
 
-            self.fold_dm = DKTDataKFoldModule(self.config)
+            self.fold_dm = DKTDataKFoldModule(self.config, mode="submit")
             self.fold_dm.train_data = tr_dataset[tra_idx]
             self.fold_dm.valid_data = tr_dataset[val_idx]
             self.fold_dm.test_data = test_dataset
@@ -150,48 +179,37 @@ class KfoldTrainer(Trainer):
 
     def cv_predict(self, fold: int):
         logger.info("Making Prediction ...")
-        predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.fold_dm)
+        sub_predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.fold_dm)
+        val_predictions = self.fold_trainer.predict(self.fold_model, datamodule=self.val_dm)
+        val_true = self.val_dm.test_answercode
 
         logger.info("Saving Submission ...")
-        predictions = np.concatenate(predictions)
-        submit_df = pd.DataFrame(predictions)
-        submit_df = submit_df.reset_index()
-        submit_df.columns = ["id", "prediction"]
-
-        file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
-        write_path = os.path.join(self.config.paths.output_path, file_name)
-        self.result_csv_list.append(write_path)
-
-        os.makedirs(name=self.config.paths.output_path, exist_ok=True)
-
-        submit_df.to_csv(write_path, index=False)
-        print(f"Successfully saved submission as {write_path}")
-        wandb.save(write_path)
+        self.write_result_csv(np.concatenate(sub_predictions), fold=fold, mode="submit")
+        self.write_result_csv(np.concatenate(val_predictions), fold=fold, mode="valid", true=val_true)
+        self.set_result_csv_list(fold=fold, mode="submit")
+        self.set_result_csv_list(fold=fold, mode="valid")
 
     def oof(self):
-        # load sample files
-        sample_path = os.path.join(self.config.paths.data_path, self.config.paths.sample_file)
-        submit_df = pd.read_csv(sample_path)
-
         # load all submission csv files
         print(f"----------------- Load files for OOF -----------------")
-        df_list = []
-        for file in self.result_csv_list:
+
+        sub_df_list = []
+        for file in self.sub_result_csv_list:
             df = pd.read_csv(file)
-            df_list.append(df["prediction"])
+            sub_df_list.append(df["prediction"])
+
+        val_df_list = []
+        for file in self.val_result_csv_list:
+            df = pd.read_csv(file)
+            val_df_list.append(df["prediction"])
 
         # soft voting
-        test_prob, test_pred = self.soft_voting(df_list)
-        submit_df["prediction"] = pd.DataFrame(test_prob)
+        sub_predictions, _ = self.soft_voting(sub_df_list)
+        val_predictions, _ = self.soft_voting(val_df_list)
+        val_true = self.val_dm.test_answercode
 
-        # file saving
-        file_name = self.config.wandb.name + "_" + self.config.model.model_name + str(self.config.trainer.k) + "final_submit.csv"
-        write_path = os.path.join(self.config.paths.output_path, file_name)
-        os.makedirs(name=self.config.paths.output_path, exist_ok=True)
-
-        submit_df.to_csv(write_path, index=False)
-        print(f"Successfully saved submission as {write_path}")
-        wandb.save(write_path)
+        self.write_result_csv(sub_predictions, oof=True, mode="submit")
+        self.write_result_csv(val_predictions, oof=True, mode="valid", true=val_true)
 
         # save test_prob file in local, wandb -> bar plot
         # save test_pred file in local, wandb -> confusion matrix
@@ -201,3 +219,13 @@ class KfoldTrainer(Trainer):
         test_pred = np.where(test_prob >= 0.5, 1, 0)
 
         return test_prob, test_pred
+
+    def set_result_csv_list(self, fold, mode):
+        if mode == "submit":
+            file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_submit.csv"
+            write_path = os.path.join(self.config.paths.output_path, file_name)
+            self.sub_result_csv_list.append(write_path)
+        elif mode == "valid":
+            file_name = self.config.wandb.name + "_" + self.config.model.model_name + "_" + str(fold) + "_valid.csv"
+            write_path = os.path.join(self.config.paths.output_path, file_name)
+            self.val_result_csv_list.append(write_path)
