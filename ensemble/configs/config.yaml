@@ -16,10 +16,10 @@ ensemble_list: [
   dummy2
 ]
 
-# cv strategy (holdout/k-fold)
-cv_strategy: holdout
+# cv strategy (holdout/kfold)
+cv_strategy: kfold
 
-# k of k-fold
+# k of kfold
 k: 5
 
 # wandb project title
