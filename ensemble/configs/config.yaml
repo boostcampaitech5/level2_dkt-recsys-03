@@ -10,7 +10,17 @@ ensemble_path: _candidates/
 # save path of final predict 
 output_path: _finals/
 
+# ensemble file list
 ensemble_list: [
   dummy1,
   dummy2
 ]
+
+# wandb project title
+wandb_project: DKT_ensemble
+
+# wandb entity 
+wandb_entity: recsys01
+
+# wandb work name
+wandb_name:
