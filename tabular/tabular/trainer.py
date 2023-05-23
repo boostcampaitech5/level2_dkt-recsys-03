@@ -84,9 +84,9 @@ class Trainer:
     def save_result_csv(self, result: pd.DataFrame, fold="", subset: str = "valid") -> None:
         directory = os.path.join(self.config.paths.output_dir, self.config.timestamp)
         if fold:
-            filename = f"{self.config.timestamp}_{subset}_{fold}.csv"
+            filename = f"{self.config.model.name}_{self.config.timestamp}_{subset}_{fold}.csv"
         else:
-            filename = f"{self.config.timestamp}_{subset}.csv"
+            filename = f"{self.config.model.name}_{self.config.timestamp}_{subset}.csv"
 
         save_path = os.path.join(directory, filename)
 
@@ -120,7 +120,7 @@ class Trainer:
                 task_type="CPU",
                 cat_features=cat_list,
                 random_seed=self.config.seed,
-                bootstrap_type="MVS",
+                bootstrap_type="Bayesian",
                 verbose=100,
             )
             model = model.fit(
@@ -204,11 +204,11 @@ class Trainer:
         if self.config.is_submit == True:
             test_submission = self.get_sample_submission_csv()
             test_submission["prediction"] = test_prob
-            self.save_result_csv(test_submission, subset="submission")
+            self.save_result_csv(test_submission, subset="submit")
 
             ens_submission = self.get_sample_submission_csv()
             ens_submission["prediction"] = ens_prob
-            ens_submission["answer"] = ens.y.reset_index(drop=True)
+            ens_submission["answer"] = ens.y.values
             self.save_result_csv(ens_submission, subset="valid")
 
         else:
@@ -267,7 +267,7 @@ class CrossValidationTrainer(Trainer):
                     task_type="CPU",
                     cat_features=cat_list,
                     random_seed=self.config.seed,
-                    bootstrap_type="MVS",
+                    bootstrap_type="Bayesian",
                     verbose=100,
                 )
 
@@ -370,7 +370,7 @@ class CrossValidationTrainer(Trainer):
         if self.config.is_submit == True:
             test_submission = self.get_sample_submission_csv()
             test_submission["prediction"] = test_prob
-            self.save_result_csv(test_submission, subset="submission")
+            self.save_result_csv(test_submission, subset="submit")
 
             ens_submission = self.get_sample_submission_csv()
             ens_submission["prediction"] = ens_prob
