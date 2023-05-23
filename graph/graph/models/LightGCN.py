@@ -3,7 +3,7 @@ import wandb
 import lightning as L
 from omegaconf import DictConfig
 from torch_geometric.nn.models import LightGCN
-from .preprocess import load_data, indexing_data
+from ..preprocess import load_data, indexing_data
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 
