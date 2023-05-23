@@ -62,6 +62,7 @@ def __main(config: DictConfig = None) -> None:
     # save inference result (submit_pred)
     submit = model.submit_frame.copy()
     submit["prediction"] = submit_pred
+    submit["prediction"] = submit.apply(lambda x: 1 if x["prediction"] > 1 else (0 if x["prediction"] < 0 else x["prediction"]), axis=1)
 
     if config.intercept_opt:
         csv_path = f"{config.output_path}{model.set_filename()}.csv"
