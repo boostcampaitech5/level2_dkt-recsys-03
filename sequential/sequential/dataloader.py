@@ -70,17 +70,20 @@ class DKTDataset(Dataset):
 
 
 class DKTDataModule(pl.LightningDataModule):
-    def __init__(self, config: DictConfig):
+    def __init__(self, config: DictConfig, mode: str):
         super().__init__()
         self.config = config
         self.df = pd.DataFrame()
         self.test_df = pd.DataFrame()
+        self.test_answercode: np.ndarray = None
 
         self.train_data = None
         self.valid_data = None
         self.test_data = None
 
         self.pin_memory = False
+
+        self.mode = mode
 
     # Fill feature engineering func if needed using self.df, self.test_df
     def __feature_engineering(self):
@@ -208,7 +211,16 @@ class DKTDataModule(pl.LightningDataModule):
         else:
             self.df = train
 
-        self.test_df = pd.read_csv(test_file_path)
+        test_df = pd.read_csv(test_file_path)
+        if self.mode == "submit":
+            self.test_df = test_df
+        elif self.mode == "valid":
+            self.test_df = test_df.groupby("userID").apply(lambda x: x.iloc[:-1]).reset_index(drop=True)
+        else:
+            raise NotImplementedError
+
+        self.test_answercode = self.test_df.groupby("userID").nth(-1)["answerCode"].values
+
         self.__feature_engineering()  # fill this func if needed
 
     # preprocess and set dataset on train/test case
@@ -299,13 +311,15 @@ class DKTDataModule(pl.LightningDataModule):
 
 
 class DKTDataKFoldModule(DKTDataModule):
-    def __init__(self, config: DictConfig):
-        super().__init__(config)
+    def __init__(self, config: DictConfig, mode: str):
+        super().__init__(config, mode)
         self.config = config
 
         self.train_data = None
         self.valid_data = None
         self.test_data = None
+
+        self.mode = None
 
     def prepare_data(self):
         pass
