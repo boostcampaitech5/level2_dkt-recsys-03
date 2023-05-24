@@ -17,3 +17,19 @@ features:
   - UserRecency4
   - UserRecency5
   - UserSolveCnt
+  - RollingTime
+  - UserInteraction1
+  - UserInteraction2
+  - UserInteraction3
+  - UserInteraction4
+  - UserInteraction5
+  - UserTag1Interaction1
+  - UserTag1Interaction2
+  - UserTag1Interaction3
+  - UserTag1Interaction4
+  - UserTag1Interaction5
+  - UserTag2Interaction1
+  - UserTag2Interaction2
+  - UserTag2Interaction3
+  - UserTag2Interaction4
+  - UserTag2Interaction5
