@@ -10,10 +10,20 @@ ensemble_path: _candidates/
 # save path of final predict 
 output_path: _finals/
 
+
+
 # ensemble file list
 ensemble_list: [
   dummy1,
   dummy2
+]
+
+# ensemble strategy (weighted/average/stacking)
+ensemble: stacking
+
+weight: [
+  0.5,
+  0.5
 ]
 
 # cv strategy (holdout/kfold)
@@ -24,6 +34,8 @@ k: 5
 
 # fit_intercept option of Linear Regression model
 intercept_opt: True
+
+
 
 # wandb project title
 wandb_project: DKT_ensemble
