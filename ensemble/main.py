@@ -33,19 +33,16 @@ def __main(config: DictConfig = None) -> None:
     # load ensemble startegy model
     print(f"Models: {config.ensemble_list}")
 
-    if config.ensemble in ["weighted", "average", "mixed"]:
+    if config.ensemble in ["weighted", "average"]:
         en = Ensemble(filenames=config.ensemble_list, filepath=config.ensemble_path)
         submit = en.submit_frame.copy()
 
         if config.ensemble == "weighted":
             submit_pred = en.simple_weighted(config.weight)
             csv_path = f"{config.output_path}sw-{en.set_filename()}.csv"
-        elif config.ensemble == "average":
+        else:  # average
             submit_pred = en.average_weighted()
             csv_path = f"{config.output_path}aw-{en.set_filename()}.csv"
-        else:
-            submit = en.submit_frame.copy()
-            csv_path = f"{config.output_path}mixed-{en.set_filename()}.csv"
 
     elif config.ensemble == "stacking":
         wandb.log({"cv_strategy": config.cv_strategy})
@@ -74,9 +71,9 @@ def __main(config: DictConfig = None) -> None:
         submit = model.submit_frame.copy()
 
         if config.intercept_opt:
-            csv_path = f"{config.output_path}{model.set_filename()}.csv"
+            csv_path = f"{config.output_path}stk-{model.set_filename()}.csv"
         else:
-            csv_path = f"{config.output_path}_nointer_{model.set_filename()}.csv"
+            csv_path = f"{config.output_path}stk-nointer-{model.set_filename()}.csv"
 
     # make save dir
     if not os.path.exists(config.output_path):

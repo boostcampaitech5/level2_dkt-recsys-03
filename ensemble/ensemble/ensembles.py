@@ -7,7 +7,6 @@ class Ensemble:
     def __init__(self, filenames: list, filepath: str):
         self.filenames = filenames
         self.filepath = filepath
-        self.is_weighted = True
 
         self.load_submit_data()
 
@@ -23,8 +22,7 @@ class Ensemble:
 
     def simple_weighted(self, weight: list):
         """
-        [description]
-        직접 weight를 지정하여, 앙상블합니다.
+        직접 weight를 지정하여 앙상블을 수행
         """
         self.weight = weight
         if not len(self.submit_pred_list) == len(weight):
@@ -39,26 +37,15 @@ class Ensemble:
         return result.tolist()
 
     def average_weighted(self):
+        """
+        (1/n)의 동일한 weight로 앙상블을 수행
+        """
         self.weight = [1 / len(self.submit_pred_list) for _ in range(len(self.submit_pred_list))]
         pred_weight_list = [pred * np.array(w) for pred, w in zip(self.submit_pred_list, self.weight)]
         result = np.sum(pred_weight_list, axis=0)
         return result.tolist()
 
     def set_filename(self):
-        if self.is_weighted:
-            weights_info = "-".join([str(w)[:4] for w in self.weight])
-            file_title = "-".join(self.filenames)
-            return f"{weights_info}-{file_title}.csv"
-        else:
-            file_title = "-".join(self.filenames)
-            return f"{file_title}.csv"
-
-    def mixed(self):
-        self.is_weighted = False
-
-        result = self.output_df[self.filenames[0]].copy()
-        for idx in range(len(self.filenames) - 1):
-            pre_idx = self.filenames[idx]
-            post_idx = self.filenames[idx + 1]
-            result[self.output_df[pre_idx] < 1] = self.output_df.loc[self.output_df[pre_idx] < 1, post_idx]
-        return result.tolist()
+        weights_info = "-".join([str(w)[:4] for w in self.weight])
+        file_title = "-".join(self.filenames)
+        return f"{weights_info}-{file_title}.csv"

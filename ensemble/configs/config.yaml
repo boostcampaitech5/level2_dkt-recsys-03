@@ -18,8 +18,8 @@ ensemble_list: [
   dummy2
 ]
 
-# ensemble strategy (weighted/average/mixed/stacking)
-ensemble: weighted
+# ensemble strategy (weighted/average/stacking)
+ensemble: stacking
 
 weight: [
   0.5,

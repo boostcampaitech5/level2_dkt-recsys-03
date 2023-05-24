@@ -82,7 +82,7 @@ class Stacking(StackingBase):
     def set_filename(self):
         weights_info = "-".join([str(w)[:4] for w in self.get_weights()])
         file_title = "-".join(self.filenames)
-        return f"stack-{weights_info}-{file_title}.csv"
+        return f"{weights_info}-{file_title}.csv"
 
 
 class OofStacking(StackingBase):
