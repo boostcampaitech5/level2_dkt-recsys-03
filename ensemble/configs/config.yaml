@@ -16,6 +16,9 @@ ensemble_list: [
   dummy2
 ]
 
+# ensemble strategy (weighted/average/mixed/stacking)
+ensemble: average
+
 # cv strategy (holdout/kfold)
 cv_strategy: kfold
 
