@@ -21,6 +21,23 @@ class Ensemble:
         for path in submit_path:
             self.submit_pred_list.append(pd.read_csv(path)["prediction"].to_list())
 
+    def simple_weighted(self, weight: list):
+        """
+        [description]
+        직접 weight를 지정하여, 앙상블합니다.
+        """
+        self.weight = weight
+        if not len(self.submit_pred_list) == len(weight):
+            raise ValueError("model과 weight의 길이가 일치하지 않습니다.")
+        if not math.isclose(np.sum(weight), 1):
+            raise ValueError("weight의 합이 1이 되도록 입력해 주세요.")
+
+        pred_arr = np.append([self.submit_pred_list[0]], [self.submit_pred_list[1]], axis=0)
+        for i in range(2, len(self.submit_pred_list)):
+            pred_arr = np.append(pred_arr, [self.submit_pred_list[i]], axis=0)
+        result = np.dot(pred_arr.T, np.array(weight))
+        return result.tolist()
+
     def average_weighted(self):
         self.weight = [1 / len(self.submit_pred_list) for _ in range(len(self.submit_pred_list))]
         pred_weight_list = [pred * np.array(w) for pred, w in zip(self.submit_pred_list, self.weight)]
@@ -38,3 +55,10 @@ class Ensemble:
 
     def mixed(self):
         self.is_weighted = False
+
+        result = self.output_df[self.filenames[0]].copy()
+        for idx in range(len(self.filenames) - 1):
+            pre_idx = self.filenames[idx]
+            post_idx = self.filenames[idx + 1]
+            result[self.output_df[pre_idx] < 1] = self.output_df.loc[self.output_df[pre_idx] < 1, post_idx]
+        return result.tolist()
