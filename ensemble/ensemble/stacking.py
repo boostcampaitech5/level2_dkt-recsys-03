@@ -1,7 +1,7 @@
 import wandb
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split, cross_validate
 
 from .utils import get_metric
@@ -18,9 +18,9 @@ class StackingBase:
         self.load_submit_data()
 
         if intercept_opt:
-            self.model = LinearRegression()  # stacking model
+            self.model = LogisticRegression()  # stacking model
         else:
-            self.model = LinearRegression(fit_intercept=intercept_opt)
+            self.model = LogisticRegression(fit_intercept=intercept_opt)
 
     def load_valid_data(self):
         valid_path = [self.filepath + filename + "_valid.csv" for filename in self.filenames]
@@ -57,7 +57,7 @@ class Stacking(StackingBase):
             print(f"Weight: {self.get_weights()}")
             print(f"Bias: {self.get_bias()}")
 
-        y_pred = self.model.predict(X_valid)  # validation model
+        y_pred = self.model.predict_proba(X_valid)[:, 1]
         val_auc, val_acc = get_metric(targets=y_valid, preds=y_pred)
 
         print("========= Holdout Valid =========")
@@ -76,7 +76,7 @@ class Stacking(StackingBase):
 
     def infer(self):
         X = np.transpose(self.submit_pred_list)
-        pred = self.model.predict(X)
+        pred = self.model.predict_proba(X)[:, 1]
         return pred
 
     def set_filename(self):
@@ -98,7 +98,7 @@ class OofStacking(StackingBase):
 
         aucs = []
         for f_idx, model in enumerate(self.cv["estimator"]):
-            pred = model.predict(X)
+            pred = model.predict_proba(X)[:, 1]
 
             val_auc, val_acc = get_metric(targets=y, preds=pred)
             print(f">>> [{f_idx} fold Score] AUC: {val_auc}, ACC: {val_acc}")
@@ -116,7 +116,7 @@ class OofStacking(StackingBase):
 
         preds = []
         for model in self.cv["estimator"]:
-            preds.append(model.predict(X_test))
+            preds.append(model.predict_proba(X_test)[:, 1])
         preds = np.array(preds)
 
         return preds.mean(axis=0)
