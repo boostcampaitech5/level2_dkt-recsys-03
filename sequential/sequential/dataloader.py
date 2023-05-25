@@ -23,14 +23,7 @@ class DKTDataset(Dataset):
         row = self.data[index]
 
         # Load from data
-        test, question, tag, correct, priorSolvingTime, testType = (
-            row[0],
-            row[1],
-            row[2],
-            row[3],
-            row[4],
-            row[5],
-        )
+        test, question, tag, correct, priorSolvingTime, testType, questionNum = (row[0], row[1], row[2], row[3], row[4], row[5], row[6])
         data = {
             "test": torch.tensor(test + 1, dtype=torch.int),
             "question": torch.tensor(question + 1, dtype=torch.int),
@@ -38,6 +31,7 @@ class DKTDataset(Dataset):
             "correct": torch.tensor(correct, dtype=torch.int),
             "prior_solving_time": torch.tensor(priorSolvingTime, dtype=torch.int),
             "test_type": torch.tensor(testType + 1, dtype=torch.int),
+            "question_num": torch.tensor(questionNum + 1, dtype=torch.int),
         }
 
         # gernerate mask & exec truncate or insert padding
@@ -97,7 +91,12 @@ class DKTDataModule(pl.LightningDataModule):
         else:
             self.test_df["testType"] = self.test_df["assessmentItemID"].apply(lambda x: x[2]).astype(int)
 
-        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "testType"]
+        if is_train:
+            self.df["QuestionNum"] = self.df["assessmentItemID"].apply(lambda x: x[-3:]).astype(int)
+        else:
+            self.test_df["QuestionNum"] = self.test_df["assessmentItemID"].apply(lambda x: x[-3:]).astype(int)
+
+        cate_cols = ["assessmentItemID", "testId", "KnowledgeTag", "testType", "QuestionNum"]
 
         # convert time data to int timestamp
         def convert_time(s: str):
@@ -234,15 +233,7 @@ class DKTDataModule(pl.LightningDataModule):
         self.n_tests = len(np.load(os.path.join(self.config.paths.asset_path, "testId_classes.npy")))
         self.n_tags = len(np.load(os.path.join(self.config.paths.asset_path, "KnowledgeTag_classes.npy")))
 
-        columns = [
-            "userID",
-            "assessmentItemID",
-            "testId",
-            "answerCode",
-            "KnowledgeTag",
-            "priorSolvingTime",
-            "testType",
-        ]
+        columns = ["userID", "assessmentItemID", "testId", "answerCode", "KnowledgeTag", "priorSolvingTime", "testType", "QuestionNum"]
 
         if stage == "fit" or stage is None:
             group = (
@@ -256,6 +247,7 @@ class DKTDataModule(pl.LightningDataModule):
                         r["answerCode"].values,
                         r["priorSolvingTime"].values,
                         r["testType"].values,
+                        r["QuestionNum"].values,
                     )
                 )
             )
@@ -274,6 +266,7 @@ class DKTDataModule(pl.LightningDataModule):
                         r["answerCode"].values,
                         r["priorSolvingTime"].values,
                         r["testType"].values,
+                        r["QuestionNum"].values,
                     )
                 )
             )
