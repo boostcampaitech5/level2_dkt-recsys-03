@@ -415,7 +415,7 @@ class GPT2(ModelBase):
 
 
 class EncoderEmbedding(nn.Module):
-    def __init__(self, n_questions, n_tests, n_tags, n_test_types, n_dims, seq_len):
+    def __init__(self, n_questions, n_tests, n_tags, n_test_types, n_dims, n_qnum, seq_len):
         super(EncoderEmbedding, self).__init__()
         self.n_dims = n_dims
         self.seq_len = seq_len
@@ -424,18 +424,20 @@ class EncoderEmbedding(nn.Module):
         self.embedding_tag = nn.Embedding(n_tags, n_dims)
         self.embedding_test_type = nn.Embedding(n_test_types, n_dims)
         self.embedding_pos = nn.Embedding(seq_len, n_dims)
+        self.embedding_qnum = nn.Embedding(n_qnum, n_dims)
 
-    def forward(self, tests, questions, tags, test_types):
+    def forward(self, tests, questions, tags, test_types, question_num):
         device = questions.device
 
         embed_test = self.embedding_test(tests)
         embed_quest = self.embedding_question(questions)
         embed_tag = self.embedding_tag(tags)
         embed_test_type = self.embedding_test_type(test_types)
+        embed_qnum = self.embedding_qnum(question_num)
 
         seq = torch.arange(self.seq_len).unsqueeze(0).to(device)
         embed_pos = self.embedding_pos(seq)
-        return embed_test + embed_quest + embed_tag + embed_test_type + embed_pos
+        return embed_test + embed_quest + embed_tag + embed_test_type + embed_qnum + embed_pos
 
 
 class DecoderEmbedding(nn.Module):
@@ -470,6 +472,7 @@ class SAINTPLUS(LightningClass):
         self.n_questions = self.config.model.n_questions
         self.n_tags = self.config.model.n_tags
         self.n_test_types = self.config.model.n_test_types
+        self.n_qnum = self.config.model.n_qnum
 
         self.drop_out = self.config.model.drop_out
         self.n_heads = self.config.model.n_heads
@@ -487,6 +490,7 @@ class SAINTPLUS(LightningClass):
             n_test_types=self.n_test_types,
             n_dims=self.embed_dims,
             seq_len=self.seq_len,
+            n_qnum=self.n_qnum,
         )
         set_logging(self.config)
 
@@ -575,13 +579,13 @@ class SAINTPLUS(LightningClass):
 
         self.load_state_dict(temp_state_dict)
 
-    def forward(self, question, test, tag, interaction, prior_solving_time, test_type, **kwargs):  # kwargs is not used
+    def forward(self, question, test, tag, interaction, prior_solving_time, test_type, question_num, **kwargs):  # kwargs is not used
         device = question.device
 
         interaction[:, 0] = 3
         prior_solving_time = prior_solving_time.unsqueeze(-1)
 
-        enc = self.encoder_embedding(tests=test, questions=question, tags=tag, test_types=test_type)
+        enc = self.encoder_embedding(tests=test, questions=question, tags=tag, test_types=test_type, question_num=question_num)
         dec = self.decoder_embedding(responses=interaction, prior_solving_time=prior_solving_time)
         # mask
         mask = torch.ones((self.seq_len, self.seq_len)).triu(diagonal=1).to(device=device, dtype=torch.bool)
