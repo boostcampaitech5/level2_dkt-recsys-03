@@ -180,7 +180,7 @@ class TabularDataModule:
             )
             df.reset_index(drop=True, inplace=True)
             result = pd.concat([df, features_df], axis=1)
-            return result.astype(get_feature_dtype_for_lgbm())
+            return result.astype(get_feature_dtype())
 
         else:
             print("Data is lastest version...")

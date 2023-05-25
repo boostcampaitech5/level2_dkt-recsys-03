@@ -67,54 +67,6 @@ def get_feature_dtype() -> Dict:
     return dtype
 
 
-def get_feature_dtype_for_lgbm() -> Dict:
-    dtype = {
-        # original
-        "userID": "int",
-        "testId": "category",
-        "assessmentItemID": "category",
-        "answerCode": "int",
-        "KnowledgeTag": "category",
-        # derived
-        "UserAcc": "float",
-        "UserTag1Acc": "float",
-        "UserTag2Acc": "float",
-        "UserLastTag1Correct": "int",
-        "UserLastTag2Correct": "int",
-        "ItemNumScaled": "float",
-        "UserTestRetakeCnt": "int",
-        "Tag2": "category",
-        "UserRecency1": "int",
-        "UserRecency2": "int",
-        "UserRecency3": "int",
-        "UserRecency4": "int",
-        "UserRecency5": "int",
-        "UserSolveCnt": "int",
-        "RollingTime": "float",
-        "UserInteraction1": "category",
-        "UserInteraction2": "category",
-        "UserInteraction3": "category",
-        "UserInteraction4": "category",
-        "UserInteraction5": "category",
-        "UserTag1Interaction1": "category",
-        "UserTag1Interaction2": "category",
-        "UserTag1Interaction3": "category",
-        "UserTag1Interaction4": "category",
-        "UserTag1Interaction5": "category",
-        "UserTag2Interaction1": "category",
-        "UserTag2Interaction2": "category",
-        "UserTag2Interaction3": "category",
-        "UserTag2Interaction4": "category",
-        "UserTag2Interaction5": "category",
-    }
-    return dtype
-
-
-def validate_generator(feature_generator: FeatureGenerator, df: pd.DataFrame) -> bool:
-    result = feature_generator.fit_transform(df)
-    return result.shape[0] == len(df) and isinstance(result, np.ndarray)
-
-
 def get_feature_generator(name: str):
     if name == "UserAcc":
         return G.UserAcc()
