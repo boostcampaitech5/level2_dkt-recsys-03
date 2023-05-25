@@ -5,7 +5,7 @@ from typing import List, Union, Optional
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from sklearn.model_selection import GroupKFold
-from feature.utils import check_and_get_generators, get_feature_engineering_pipeline, get_feature_dtype, get_feature_dtype_for_lgbm
+from feature.utils import check_and_get_generators, get_feature_engineering_pipeline, get_feature_dtype
 
 
 class TabularDataModule:
