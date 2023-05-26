@@ -6,14 +6,11 @@ from typing import Tuple, Dict
 from omegaconf import DictConfig
 
 
-def load_data(data_dir: str, mode: str = None) -> pd.DataFrame:
+def load_data(data_dir: str) -> pd.DataFrame:
     path1 = os.path.join(data_dir, "train_data.csv")
-    path2 = os.path.join(data_dir, "test_data.csv")
+    path2 = os.path.join(data_dir, "test_valid.csv")
     train = pd.read_csv(path1)
     test = pd.read_csv(path2)
-
-    if mode == "val":
-        test = get_valid(test)
 
     data = pd.concat([train, test])
     data.drop_duplicates(subset=["userID", "assessmentItemID"], keep="last", inplace=True)

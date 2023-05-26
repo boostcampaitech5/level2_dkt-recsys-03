@@ -33,7 +33,7 @@ class GraphDataModule(L.LightningDataModule):
     def prepare_data(self):
         print("+++++++preparing data++++++++")
         # 데이터를 부르고 train&test concat하고 중복 처리
-        self.data = load_data(self.config.paths.data_path, self.mode)
+        self.data = load_data(self.config.paths.data_path)
         # len을 구해 노드의 개수로 활용
         self.id2index: dict = indexing_data(self.data)
         self.data = process_data(data=self.data, id2index=self.id2index, config=self.config)
@@ -42,7 +42,7 @@ class GraphDataModule(L.LightningDataModule):
     def setup(self, stage):
         print("+++++++setting up data++++++++")
 
-        eid = (self.data["label"] != -1).tolist()
+        eid = (self.data["label"] >= 0).tolist()
         train = np.where(eid)[0]
 
         permuted = np.random.permutation(train)
@@ -58,7 +58,10 @@ class GraphDataModule(L.LightningDataModule):
             }
 
         if stage == "predict" or stage is None:
-            te_idx = [self.data["label"] == -1]
+            if self.mode == "val":
+                te_idx = [self.data["label"] == -2]
+            else:
+                te_idx = [self.data["label"] == -1]
             self.test_data = {"edge": torch.stack([self.data["edge"][0][te_idx], self.data["edge"][1][te_idx]]), "label": self.data["label"][te_idx]}
 
     def train_dataloader(self):
