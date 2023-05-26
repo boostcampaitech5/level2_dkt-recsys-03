@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-  <img src="https://github.com/boostcampaitech5/level2_dkt-recsys-03/assets/7973448/d9c6a1fd-d49b-4506-9c3c-5e07d34a99d6">
+  <img width="500" src="https://github.com/boostcampaitech5/level2_dkt-recsys-03/assets/7973448/d9c6a1fd-d49b-4506-9c3c-5e07d34a99d6">
   <br>
   <h1>Level2 DKT</h1>
   <strong>Deep Knowledge Tracing</strong>
