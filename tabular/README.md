@@ -12,12 +12,14 @@
 │   └──config.yaml               <- Main config
 │
 ├── tabular                    <- Source code
+│   ├── feature                     <- Feature Engineering scripts
 │   ├── data.py                     <- Data scripts
 │   ├── metric.py                   <- Metric scripts
 │   ├── trainer.py                  <- Trainer scripts
 │   └── utils.py                    <- Utility scripts
 │
 ├── main.py                  <- Run training and inference
+├── test_main.py             <- Run testing with dummy data
 ├── requirements.txt         <- File for installing python dependencies
 └── README.md
 ```
